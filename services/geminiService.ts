@@ -18,23 +18,36 @@ export const analyzeContent = async (
   imageBase64?: string
 ): Promise<AnalysisResult> => {
 
-  // System instruction for the persona
+  // System instruction for Explainable AI (XAI) and Evidence-Based Verification
   const systemInstruction = `
-    You are TruthLens, an advanced misinformation detection engine. 
-    Your goal is to analyze content for veracity, bias, and manipulation.
-    You must classify content as Real, Fake, Misleading, Satire, or Unverified.
-    You must provide explainable reasoning, detect emotional manipulation, and estimate virality.
-    If the content is harmless or true, verify it. If it is harmful or false, debunk it with clear logic.
+    You are TruthLens, a state-of-the-art cognitive security engine designed for evidence-based verification and deepfake detection.
+    
+    CORE DIRECTIVES:
+    1. EVIDENCE-BASED: Do not just state a verdict. Cite specific evidence, logical inconsistencies, or known verified facts.
+    2. EXPLAINABLE AI: Use a "Chain of Thought" approach. Break down the logic: Premise -> Inconsistency -> Conclusion.
+    3. MULTIMODAL FORENSICS: When analyzing images, look for specific deepfake artifacts (asymmetrical eyes, weird hands, lighting mismatches, pixelation boundaries).
+    4. UNBIASED: Maintain strictly neutral, objective tone.
+
+    CLASSIFICATION RULES:
+    - Real: Corroborated by multiple reliable sources.
+    - Fake: Proven false by evidence or physically impossible.
+    - Misleading: True facts used in false context or manipulated data.
+    - Satire: Humorous intent, clearly not meant to be factual.
+    - Unverified: Insufficient evidence to prove or disprove.
   `;
 
-  // Schema for structured output (used for text/url requests)
+  // Schema for structured output
   const schema = {
     type: Type.OBJECT,
     properties: {
       classification: { type: Type.STRING, enum: ['Real', 'Fake', 'Misleading', 'Satire', 'Unverified'] },
       confidence: { type: Type.INTEGER, description: "Confidence score between 0 and 100" },
       summary: { type: Type.STRING },
-      reasoning: { type: Type.ARRAY, items: { type: Type.STRING } },
+      reasoning: { 
+        type: Type.ARRAY, 
+        items: { type: Type.STRING },
+        description: "Step-by-step logic chain explaining the verdict."
+      },
       factChecks: {
         type: Type.ARRAY,
         items: {
@@ -42,7 +55,7 @@ export const analyzeContent = async (
           properties: {
             claim: { type: Type.STRING },
             verdict: { type: Type.STRING },
-            source: { type: Type.STRING, description: "A likely source or 'General Knowledge'" }
+            source: { type: Type.STRING, description: "Specific organization, report, or logical axiom used as evidence." }
           }
         }
       },
@@ -57,21 +70,16 @@ export const analyzeContent = async (
     let resultJson: any;
 
     if (type === 'image' && imageBase64) {
-      // Use Gemini 2.5 Flash Image for multimodal analysis
+      // Specialized Deepfake Detection Prompt
       const prompt = `
-        Analyze this image and any text within it for misinformation.
-        Return a valid JSON object with the following structure:
-        {
-          "classification": "Real" | "Fake" | "Misleading" | "Satire" | "Unverified",
-          "confidence": number (0-100),
-          "summary": "string",
-          "reasoning": ["string", "string"],
-          "factChecks": [{"claim": "string", "verdict": "string", "source": "string"}],
-          "emotionalTriggers": ["string"],
-          "viralityScore": number (0-100),
-          "isAiGenerated": boolean
-        }
-        Only return the JSON.
+        Perform a Deepfake Forensics Analysis on this image.
+        1. Scan for GAN/Diffusion artifacts: warped backgrounds, asymmetrical facial features (eyes, ears), unnatural skin texture (too smooth/too sharp), and hand structure.
+        2. Analyze lighting consistency: Do shadows match light sources?
+        3. Extract any text and verify claims.
+        
+        Return a JSON object matching the schema. 
+        In 'reasoning', list specific visual artifacts found (e.g., 'Inconsistent shadow angle on subject's neck').
+        Set 'isAiGenerated' to true if artifacts are significant.
       `;
       
       const response = await ai.models.generateContent({
@@ -81,24 +89,51 @@ export const analyzeContent = async (
             { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
             { text: content ? `Context provided: ${content}. ${prompt}` : prompt }
           ]
+        },
+        config: {
+          systemInstruction: systemInstruction, 
+          // Note: Response schema not fully supported in vision models in all regions yet, parsing text is safer, 
+          // but we can try to guide it strongly.
         }
       });
 
       const textResponse = response.text || "{}";
-      resultJson = JSON.parse(cleanJsonString(textResponse));
+      // Vision models might return markdown code blocks
+      const jsonStr = cleanJsonString(textResponse);
+      try {
+        resultJson = JSON.parse(jsonStr);
+      } catch (e) {
+        // Fallback for malformed JSON from vision model
+        console.warn("Malformed JSON from vision model, attempting repair", textResponse);
+        resultJson = {
+          classification: "Unverified",
+          confidence: 0,
+          summary: "Raw analysis: " + textResponse.substring(0, 200) + "...",
+          reasoning: ["Could not parse structured forensic data."],
+          viralityScore: 0,
+          isAiGenerated: false
+        }
+      }
 
     } else {
-      // Use Gemini 3 Flash Preview for text and URL analysis
+      // Text/URL Verification
       let promptText = content;
       
       if (type === 'url') {
         promptText = `
           Analyze this URL: "${content}". 
-          1. Assess the domain reputation and credibility history.
-          2. If it is a known satire or fake news site, flag it immediately.
-          3. If the URL looks like a phishing pattern (e.g. typosquatting), flag it.
-          4. Analyze the likely content structure based on the URL parameters.
-          Return the response in the requested JSON schema.
+          1. Domain Credibility: Check if the domain mimics a legitimate site (typosquatting).
+          2. Content Analysis: Infer likely content and check against known misinformation narratives.
+          3. Fast Checking: Cross-reference with known fact-checks.
+          Return result in JSON.
+        `;
+      } else {
+        promptText = `
+          Analyze this text: "${content}".
+          1. Cross-reference claims with your internal knowledge base of verified facts.
+          2. Identify logical fallacies (strawman, ad hominem, slippery slope).
+          3. Detect emotional manipulation patterns.
+          Return result in JSON.
         `;
       }
 

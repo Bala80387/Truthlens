@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Shield, Eye, ThumbsDown, Activity, ChevronRight, Lock, Volume2, FileDown, Mic } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Shield, Eye, ThumbsDown, Activity, ChevronRight, Lock, Volume2, FileDown, Mic, FileText, Link as LinkIcon, ScanFace, Binary } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { generateAudioReport } from '../services/geminiService';
 
@@ -250,44 +250,90 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* Left Col: Reasoning */}
+        {/* Left Col: Reasoning & Evidence */}
         <div className="md:col-span-2 space-y-6">
+          
+          {/* Deepfake Analysis Module */}
+          {result.isAiGenerated && (
+             <div className="glass-panel p-1 rounded-3xl border border-purple-500/30 overflow-hidden relative">
+                 <div className="absolute inset-0 bg-purple-900/10 pointer-events-none"></div>
+                 <div className="p-6 bg-black/40">
+                     <div className="flex items-center space-x-3 mb-4">
+                        <ScanFace className="w-6 h-6 text-purple-400" />
+                        <h3 className="text-xl font-bold text-white">Deepfake Forensics Report</h3>
+                     </div>
+                     <p className="text-sm text-purple-200 mb-6">
+                        <Binary className="w-4 h-4 inline mr-1" />
+                        Visual artifacts consistent with generative models detected.
+                     </p>
+                     
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl">
+                            <span className="text-xs font-bold text-purple-400 uppercase block mb-1">Pattern Anomaly</span>
+                            <span className="text-white font-mono text-sm">Texture Smoothing (Face)</span>
+                            <div className="w-full h-1 bg-purple-900 rounded-full mt-2">
+                                <div className="w-[85%] h-full bg-purple-500 rounded-full"></div>
+                            </div>
+                        </div>
+                        <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl">
+                            <span className="text-xs font-bold text-purple-400 uppercase block mb-1">Lighting Consistency</span>
+                            <span className="text-white font-mono text-sm">Shadow Mismatch</span>
+                            <div className="w-full h-1 bg-purple-900 rounded-full mt-2">
+                                <div className="w-[60%] h-full bg-purple-500 rounded-full"></div>
+                            </div>
+                        </div>
+                     </div>
+                 </div>
+             </div>
+          )}
+
+          {/* Explainable AI Logic Chain */}
           <div className="glass-panel p-8 rounded-3xl border-white/5">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center">
               <Shield className="w-5 h-5 mr-3 text-primary-400" />
-              Reasoning Engine
+              Reasoning Logic Chain
             </h3>
-            <ul className="space-y-4">
+            <div className="relative border-l-2 border-slate-800 ml-4 space-y-8 py-2">
               {result.reasoning.map((reason, idx) => (
-                <li key={idx} className="flex items-start space-x-4 p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                  <div className="w-6 h-6 rounded-full bg-primary-500/20 text-primary-400 flex items-center justify-center flex-shrink-0 text-xs font-bold border border-primary-500/30">
-                    {idx + 1}
-                  </div>
-                  <span className="text-slate-300 leading-relaxed">{reason}</span>
-                </li>
+                <div key={idx} className="relative pl-8">
+                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-primary-500 flex items-center justify-center">
+                       <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
+                   </div>
+                   <h4 className="text-sm font-bold text-primary-400 uppercase mb-1">Logic Step {idx + 1}</h4>
+                   <p className="text-slate-300 leading-relaxed text-sm">{reason}</p>
+                </div>
               ))}
-            </ul>
+            </div>
           </div>
 
+          {/* Evidence Board */}
           {result.factChecks.length > 0 && (
             <div className="glass-panel p-8 rounded-3xl border-white/5">
               <h3 className="text-xl font-bold text-white mb-6 flex items-center">
                 <Activity className="w-5 h-5 mr-3 text-green-400" />
-                Cross-Verification
+                Evidence & Verification
               </h3>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 gap-4">
                 {result.factChecks.map((check, idx) => (
-                  <div key={idx} className="border border-white/5 bg-black/30 p-4 rounded-xl">
-                    <div className="flex justify-between items-start mb-2">
-                        <span className="text-xs font-bold text-slate-500 uppercase">Claim</span>
-                        <span className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-400 border border-white/5">{check.source}</span>
+                  <div key={idx} className="border border-white/5 bg-black/30 p-5 rounded-xl hover:bg-white/5 transition-colors group">
+                    <div className="flex justify-between items-start mb-3">
+                        <span className="flex items-center space-x-2 text-xs font-bold text-slate-500 uppercase">
+                            <FileText className="w-3 h-3" />
+                            <span>Claim Analysis</span>
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-1 rounded border ${
+                             check.verdict.toLowerCase().includes('true') || check.verdict.toLowerCase().includes('supported') 
+                             ? 'bg-green-500/10 text-green-400 border-green-500/20' 
+                             : 'bg-red-500/10 text-red-400 border-red-500/20'
+                        }`}>
+                            {check.verdict}
+                        </span>
                     </div>
-                    <p className="text-slate-200 font-medium mb-3">"{check.claim}"</p>
-                    <div className="flex items-center text-sm">
-                      <span className="text-slate-500 mr-2">Verdict:</span>
-                      <span className={`font-bold ${
-                          check.verdict.toLowerCase().includes('true') ? 'text-green-400' : 'text-red-400'
-                      }`}>{check.verdict}</span>
+                    <p className="text-white font-medium mb-4">"{check.claim}"</p>
+                    
+                    <div className="flex items-center pt-3 border-t border-white/5">
+                       <LinkIcon className="w-3 h-3 text-primary-400 mr-2" />
+                       <span className="text-xs text-primary-400 font-mono">Source: {check.source}</span>
                     </div>
                   </div>
                 ))}

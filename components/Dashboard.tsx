@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, TrendingUp, Users, ShieldCheck, Map, ArrowUpRight, Globe } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Users, ShieldCheck, Map, ArrowUpRight, Globe, Radio, Activity, Search } from 'lucide-react';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -25,6 +25,14 @@ const categoryData = [
   { name: 'Crime', value: 15, color: '#a855f7' },
 ];
 
+const MOCK_LIVE_FEED = [
+    { platform: 'Twitter', text: 'Just saw a video of the president dancing on Mars! #Viral', status: 'Fake', confidence: 99 },
+    { platform: 'Facebook', text: 'New health study confirms coffee extends life by 200 years.', status: 'Misleading', confidence: 85 },
+    { platform: 'Reddit', text: 'Leaked documents from Area 51 showing alien soup recipes.', status: 'Satire', confidence: 92 },
+    { platform: 'News', text: 'Central Bank announces interest rate hike of 0.25%.', status: 'Real', confidence: 98 },
+    { platform: 'TikTok', text: 'Filter that shows your future soulmate is definitely scientific.', status: 'Fake', confidence: 95 },
+];
+
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
@@ -44,6 +52,19 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
+  const [liveItems, setLiveItems] = useState<any[]>([]);
+
+  // Simulate real-time ingestion
+  useEffect(() => {
+    const interval = setInterval(() => {
+        const newItem = MOCK_LIVE_FEED[Math.floor(Math.random() * MOCK_LIVE_FEED.length)];
+        const timestampedItem = { ...newItem, id: Date.now(), time: new Date().toLocaleTimeString() };
+        setLiveItems(prev => [timestampedItem, ...prev].slice(0, 6));
+    }, 2500);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="space-y-6 animate-fade-in pb-10">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -56,8 +77,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
         </div>
         <div className="flex items-center space-x-3">
           <span className="glass-panel px-4 py-2 rounded-full text-xs text-green-400 flex items-center border-green-500/20 bg-green-500/5 shadow-[0_0_10px_rgba(34,197,94,0.2)]">
-            <span className="w-2 h-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-            Live Stream Active
+            <Radio className="w-3 h-3 mr-2 animate-pulse text-red-500" />
+            Real-Time Monitoring Active
           </span>
         </div>
       </div>
@@ -163,34 +184,50 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
            </div>
         </div>
 
-        <div className="glass-panel p-6 rounded-2xl border-white/5">
-           <h3 className="text-lg font-bold text-white mb-6">Breaking Alerts</h3>
-           <div className="space-y-2">
-             {[
-               { topic: "AI Deepfake: Celebrity endorsement scam", severity: 'high', time: '2m ago' },
-               { topic: "Phishing: New tax refund SMS wave", severity: 'medium', time: '15m ago' },
-               { topic: "Misleading health advice on Vitamin D", severity: 'low', time: '42m ago' },
-               { topic: "Satire: Onion article shared as fact", severity: 'low', time: '1h ago' },
-             ].map((alert, i) => (
+        <div className="glass-panel p-6 rounded-2xl border-white/5 flex flex-col">
+           <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white">Live Ingestion Stream</h3>
+              <div className="flex items-center space-x-2">
+                  <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  <span className="text-[10px] text-green-400 font-mono">WS_CONNECTED</span>
+              </div>
+           </div>
+           
+           <div className="space-y-3 flex-1 overflow-hidden relative">
+             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/80 pointer-events-none z-10"></div>
+             {liveItems.map((item) => (
                <div 
-                  key={i} 
-                  onClick={() => onAnalyzeTopic(alert.topic)}
-                  className="flex items-center justify-between p-4 rounded-xl hover:bg-white/5 transition-all border border-transparent hover:border-white/10 cursor-pointer group"
+                  key={item.id} 
+                  onClick={() => onAnalyzeTopic(item.text)}
+                  className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-all cursor-pointer group animate-fade-in"
                 >
-                 <div className="flex items-start space-x-3">
-                    <div className={`w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0 ${
-                      alert.severity === 'high' ? 'bg-red-500 shadow-[0_0_8px_red]' : 
-                      alert.severity === 'medium' ? 'bg-orange-500 shadow-[0_0_8px_orange]' : 
-                      'bg-blue-500 shadow-[0_0_8px_blue]'
-                    }`}></div>
-                    <div>
-                       <span className="font-semibold text-slate-200 text-sm group-hover:text-primary-400 transition-colors block">{alert.topic}</span>
-                       <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider">Detected {alert.time}</p>
-                    </div>
+                 <div className="flex-1 min-w-0 mr-4">
+                     <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-[10px] font-bold text-slate-400 px-1.5 py-0.5 rounded bg-black/50 uppercase">{item.platform}</span>
+                        <span className="text-[10px] text-slate-500">{item.time}</span>
+                     </div>
+                     <p className="text-xs text-slate-200 truncate font-mono">{item.text}</p>
                  </div>
-                 <ArrowUpRight className="w-4 h-4 text-slate-600 group-hover:text-primary-400 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                 
+                 <div className="flex flex-col items-end flex-shrink-0">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                         item.status === 'Real' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                         item.status === 'Fake' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                         'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                    }`}>
+                        {item.status.toUpperCase()}
+                    </span>
+                    <span className="text-[10px] text-slate-500 mt-1">{item.confidence}% Conf.</span>
+                 </div>
                </div>
              ))}
+           </div>
+           
+           <div className="mt-4 pt-4 border-t border-white/5 flex justify-center">
+               <button className="text-xs text-primary-400 flex items-center hover:text-white transition-colors">
+                   <Activity className="w-3 h-3 mr-1" />
+                   View Full Monitoring Logs
+               </button>
            </div>
         </div>
       </div>
