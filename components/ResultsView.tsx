@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Shield, Eye, ThumbsDown, Activity, ChevronRight, Lock, Volume2, FileDown, Mic, FileText, Link as LinkIcon, ScanFace, Binary } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Shield, Eye, ThumbsDown, Activity, ChevronRight, Lock, Volume2, FileDown, Mic, FileText, Link as LinkIcon, ScanFace, Binary, Cpu, BarChart2, Radio, Globe, Search, Calendar } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { generateAudioReport } from '../services/geminiService';
 
@@ -9,8 +9,8 @@ interface ResultsViewProps {
   onReset: () => void;
 }
 
-// Helper to decode raw PCM audio data
-function decode(base64: string) {
+// Helper to decode Base64 string to Uint8Array
+function base64ToBytes(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
@@ -18,6 +18,22 @@ function decode(base64: string) {
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
+}
+
+// Helper to convert raw PCM (Int16) bytes to AudioBuffer
+function pcmToAudioBuffer(data: Uint8Array, ctx: AudioContext, sampleRate: number = 24000): AudioBuffer {
+  // Create an Int16 view of the byte buffer
+  const pcm16 = new Int16Array(data.buffer, data.byteOffset, data.length / 2);
+  
+  // Create an empty AudioBuffer
+  const buffer = ctx.createBuffer(1, pcm16.length, sampleRate);
+  const channelData = buffer.getChannelData(0);
+  
+  // Convert Int16 to Float32 [-1.0, 1.0]
+  for (let i = 0; i < pcm16.length; i++) {
+     channelData[i] = pcm16[i] / 32768.0;
+  }
+  return buffer;
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => {
@@ -108,6 +124,34 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
             yPos += (splitLine.length * 6) + 2;
         });
     }
+    
+    // Investigation Results
+    if (result.investigation) {
+        yPos += 10;
+        doc.addPage();
+        yPos = 20;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.text("Deep Investigation Dossier", 10, yPos);
+        yPos += 10;
+        
+        doc.setFontSize(11);
+        const verdict = doc.splitTextToSize(result.investigation.verdict, 180);
+        doc.text(verdict, 10, yPos);
+        yPos += (verdict.length * 7) + 10;
+        
+        doc.setFontSize(12);
+        doc.text("Identified Sources:", 10, yPos);
+        yPos += 8;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        
+        result.investigation.sources.forEach(src => {
+            const line = `${src.title} (${src.source})`;
+            doc.text(line, 10, yPos);
+            yPos += 6;
+        });
+    }
 
     // Footer
     doc.setFontSize(8);
@@ -127,7 +171,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
         
         if (audioData) {
             const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({sampleRate: 24000});
-            const audioBuffer = await audioContext.decodeAudioData(decode(audioData).buffer);
+            // 1. Decode Base64 to raw bytes
+            const bytes = base64ToBytes(audioData);
+            // 2. Convert raw PCM bytes to AudioBuffer
+            const audioBuffer = pcmToAudioBuffer(bytes, audioContext);
             
             const source = audioContext.createBufferSource();
             source.buffer = audioBuffer;
@@ -140,10 +187,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
         }
     } catch (e) {
         console.error("Failed to play audio", e);
-        alert("Failed to generate voice report.");
+        alert("Failed to generate voice report. The text may be too long or the service is temporarily unavailable.");
         setIsPlaying(false);
     }
   };
+
+  const aiProb = result.technicalMetrics?.aiProbability || (result.isAiGenerated ? 95 : 5);
+  const isAudio = result.technicalMetrics?.aiProbability !== undefined && result.technicalMetrics.bertLinguisticScore === 0 && result.technicalMetrics.vitVisualArtifacts === 0;
 
   return (
     <div className="max-w-5xl mx-auto animate-fade-in pb-12">
@@ -230,19 +280,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10 w-full max-w-3xl">
                 <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
                     <span className="text-3xl font-bold text-white mb-1">{result.confidence}%</span>
-                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">AI Confidence</span>
+                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Confidence</span>
                 </div>
                 <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
-                    <span className={`text-3xl font-bold mb-1 ${result.viralityScore > 70 ? 'text-red-400' : 'text-slate-200'}`}>
-                        {result.viralityScore}<span className="text-sm text-slate-500">/100</span>
+                    <span className={`text-3xl font-bold mb-1 ${aiProb > 50 ? 'text-purple-400' : 'text-blue-400'}`}>
+                        {aiProb}%
                     </span>
-                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Virality Index</span>
+                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">AI Probability</span>
                 </div>
                 <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
-                    <span className={`text-3xl font-bold mb-1 ${result.isAiGenerated ? 'text-purple-400' : 'text-blue-400'}`}>
-                        {result.isAiGenerated ? 'HIGH' : 'LOW'}
+                    <span className={`text-3xl font-bold mb-1 ${result.isAiGenerated ? 'text-red-400' : 'text-green-400'}`}>
+                        {result.isAiGenerated ? 'SYNTHETIC' : 'ORGANIC'}
                     </span>
-                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Synthetic Origin</span>
+                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Origin Source</span>
                 </div>
             </div>
         </div>
@@ -252,46 +302,118 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
         
         {/* Left Col: Reasoning & Evidence */}
         <div className="md:col-span-2 space-y-6">
-          
-          {/* Deepfake Analysis Module */}
-          {result.isAiGenerated && (
-             <div className="glass-panel p-1 rounded-3xl border border-purple-500/30 overflow-hidden relative">
-                 <div className="absolute inset-0 bg-purple-900/10 pointer-events-none"></div>
-                 <div className="p-6 bg-black/40">
-                     <div className="flex items-center space-x-3 mb-4">
-                        <ScanFace className="w-6 h-6 text-purple-400" />
-                        <h3 className="text-xl font-bold text-white">Deepfake Forensics Report</h3>
-                     </div>
-                     <p className="text-sm text-purple-200 mb-6">
-                        <Binary className="w-4 h-4 inline mr-1" />
-                        Visual artifacts consistent with generative models detected.
-                     </p>
-                     
-                     <div className="grid grid-cols-2 gap-4">
-                        <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl">
-                            <span className="text-xs font-bold text-purple-400 uppercase block mb-1">Pattern Anomaly</span>
-                            <span className="text-white font-mono text-sm">Texture Smoothing (Face)</span>
-                            <div className="w-full h-1 bg-purple-900 rounded-full mt-2">
-                                <div className="w-[85%] h-full bg-purple-500 rounded-full"></div>
-                            </div>
-                        </div>
-                        <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl">
-                            <span className="text-xs font-bold text-purple-400 uppercase block mb-1">Lighting Consistency</span>
-                            <span className="text-white font-mono text-sm">Shadow Mismatch</span>
-                            <div className="w-full h-1 bg-purple-900 rounded-full mt-2">
-                                <div className="w-[60%] h-full bg-purple-500 rounded-full"></div>
-                            </div>
-                        </div>
-                     </div>
-                 </div>
-             </div>
+
+          {/* Deep Investigation Report (If available) */}
+          {result.investigation && (
+              <div className="glass-panel p-8 rounded-3xl border border-purple-500/30 bg-purple-900/10 overflow-hidden relative">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-purple-500/10 rounded-full blur-[60px] pointer-events-none"></div>
+                  <div className="flex items-center space-x-3 mb-6 relative z-10">
+                      <Search className="w-6 h-6 text-purple-400" />
+                      <h3 className="text-xl font-bold text-white">Investigation Dossier</h3>
+                      <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] uppercase font-bold rounded">Agent Report</span>
+                  </div>
+
+                  <div className="space-y-6 relative z-10">
+                      <div className="bg-black/40 p-5 rounded-xl border border-white/10">
+                          <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wider mb-2">Agent Verdict</h4>
+                          <p className="text-slate-200 leading-relaxed">{result.investigation.verdict}</p>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center">
+                                  <Globe className="w-3 h-3 mr-2" /> Corroborating Sources
+                              </h4>
+                              <ul className="space-y-2">
+                                  {result.investigation.sources.slice(0, 4).map((source, i) => (
+                                      <li key={i}>
+                                          <a href={source.uri} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 flex items-center truncate transition-colors">
+                                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 mr-2 flex-shrink-0"></span>
+                                              <span className="truncate">{source.title}</span>
+                                              <span className="text-slate-600 ml-1 text-[10px] hidden sm:inline">({source.source})</span>
+                                          </a>
+                                      </li>
+                                  ))}
+                              </ul>
+                          </div>
+
+                          <div className="bg-black/30 p-4 rounded-xl border border-white/5">
+                              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center">
+                                  <Calendar className="w-3 h-3 mr-2" /> Timeline Construction
+                              </h4>
+                              <div className="space-y-3 pl-1">
+                                  {result.investigation.timeline.length > 0 ? result.investigation.timeline.slice(0, 3).map((item, i) => (
+                                      <div key={i} className="flex flex-col border-l border-slate-700 pl-3 relative">
+                                          <span className="w-2 h-2 rounded-full bg-slate-600 absolute -left-[4.5px] top-1"></span>
+                                          <span className="text-[10px] text-slate-400 font-mono mb-0.5">{item.date}</span>
+                                          <span className="text-xs text-slate-300">{item.event}</span>
+                                      </div>
+                                  )) : (
+                                      <p className="text-xs text-slate-600 italic">No timeline data available for this claim.</p>
+                                  )}
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
           )}
+          
+          {/* Neural Diagnostics Module */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/10">
+              <div className="flex items-center space-x-3 mb-6">
+                <Cpu className="w-6 h-6 text-primary-400" />
+                <h3 className="text-xl font-bold text-white">AI Content Detection</h3>
+              </div>
+              
+              <div className="mb-6">
+                 <div className="flex justify-between mb-2">
+                    <span className="text-sm text-slate-400">Human vs AI Spectrum</span>
+                    <span className="text-sm font-bold text-white">{aiProb}% AI Likelihood</span>
+                 </div>
+                 <div className="h-4 bg-slate-800 rounded-full relative overflow-hidden">
+                    <div 
+                        className={`absolute left-0 top-0 bottom-0 transition-all duration-1000 ${aiProb > 50 ? 'bg-gradient-to-r from-blue-500 to-purple-500' : 'bg-gradient-to-r from-green-500 to-blue-400'}`} 
+                        style={{width: `${aiProb}%`}}
+                    ></div>
+                 </div>
+                 <div className="flex justify-between mt-2 text-xs text-slate-500">
+                    <span>100% Human</span>
+                    <span>100% AI</span>
+                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Perplexity / Text Complexity */}
+                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                       <span className="text-xs text-slate-400 font-bold uppercase">Perplexity Score</span>
+                       <span className="text-xs font-mono text-white">{result.technicalMetrics?.perplexityScore || 0}/100</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-800 rounded-full mb-2">
+                       <div className="h-full bg-blue-500 rounded-full" style={{width: `${result.technicalMetrics?.perplexityScore || 0}%`}}></div>
+                    </div>
+                    <p className="text-[10px] text-slate-500">Measures text complexity. Low scores often indicate AI.</p>
+                 </div>
+
+                 {/* Burstiness / Sentence Variation */}
+                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                    <div className="flex justify-between items-center mb-2">
+                       <span className="text-xs text-slate-400 font-bold uppercase">Burstiness Score</span>
+                       <span className="text-xs font-mono text-white">{result.technicalMetrics?.burstinessScore || 0}/100</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-slate-800 rounded-full mb-2">
+                       <div className="h-full bg-green-500 rounded-full" style={{width: `${result.technicalMetrics?.burstinessScore || 0}%`}}></div>
+                    </div>
+                    <p className="text-[10px] text-slate-500">Measures sentence variation. AI tends to be monotonous.</p>
+                 </div>
+              </div>
+          </div>
 
           {/* Explainable AI Logic Chain */}
           <div className="glass-panel p-8 rounded-3xl border-white/5">
             <h3 className="text-xl font-bold text-white mb-6 flex items-center">
               <Shield className="w-5 h-5 mr-3 text-primary-400" />
-              Reasoning Logic Chain
+              Explainable AI Reasoning
             </h3>
             <div className="relative border-l-2 border-slate-800 ml-4 space-y-8 py-2">
               {result.reasoning.map((reason, idx) => (
@@ -299,68 +421,43 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-primary-500 flex items-center justify-center">
                        <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
                    </div>
-                   <h4 className="text-sm font-bold text-primary-400 uppercase mb-1">Logic Step {idx + 1}</h4>
+                   <h4 className="text-sm font-bold text-primary-400 uppercase mb-1">Analysis Step {idx + 1}</h4>
                    <p className="text-slate-300 leading-relaxed text-sm">{reason}</p>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Evidence Board */}
-          {result.factChecks.length > 0 && (
-            <div className="glass-panel p-8 rounded-3xl border-white/5">
-              <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-                <Activity className="w-5 h-5 mr-3 text-green-400" />
-                Evidence & Verification
-              </h3>
-              <div className="grid grid-cols-1 gap-4">
-                {result.factChecks.map((check, idx) => (
-                  <div key={idx} className="border border-white/5 bg-black/30 p-5 rounded-xl hover:bg-white/5 transition-colors group">
-                    <div className="flex justify-between items-start mb-3">
-                        <span className="flex items-center space-x-2 text-xs font-bold text-slate-500 uppercase">
-                            <FileText className="w-3 h-3" />
-                            <span>Claim Analysis</span>
-                        </span>
-                        <span className={`text-xs font-bold px-2 py-1 rounded border ${
-                             check.verdict.toLowerCase().includes('true') || check.verdict.toLowerCase().includes('supported') 
-                             ? 'bg-green-500/10 text-green-400 border-green-500/20' 
-                             : 'bg-red-500/10 text-red-400 border-red-500/20'
-                        }`}>
-                            {check.verdict}
-                        </span>
-                    </div>
-                    <p className="text-white font-medium mb-4">"{check.claim}"</p>
-                    
-                    <div className="flex items-center pt-3 border-t border-white/5">
-                       <LinkIcon className="w-3 h-3 text-primary-400 mr-2" />
-                       <span className="text-xs text-primary-400 font-mono">Source: {check.source}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right Col: Emotional & Actions */}
         <div className="space-y-6">
           <div className="glass-panel p-8 rounded-3xl border-white/5">
-            <h3 className="text-xl font-bold text-white mb-6">Emotional Triggers</h3>
+            <h3 className="text-xl font-bold text-white mb-6">Detection Highlights</h3>
             <div className="flex flex-wrap gap-2">
-              {result.emotionalTriggers.length > 0 ? (
-                result.emotionalTriggers.map((trigger, idx) => (
+              {result.isAiGenerated ? (
+                  <>
+                     <span className="px-4 py-2 rounded-lg text-sm font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        Synthetic Pattern
+                     </span>
+                     <span className="px-4 py-2 rounded-lg text-sm font-semibold bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                        Low Perplexity
+                     </span>
+                  </>
+              ) : (
+                  <span className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
+                     Human Nuance
+                  </span>
+              )}
+               {result.emotionalTriggers.map((trigger, idx) => (
                   <span key={idx} className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
                     {trigger}
                   </span>
-                ))
-              ) : (
-                <span className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-500/10 text-green-400 border border-green-500/20">
-                  Neutral Tone
-                </span>
-              )}
+                ))}
             </div>
             <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                Content designed to trigger these emotions is 4x more likely to be shared without verification.
+                {result.isAiGenerated 
+                    ? "Content exhibits statistical patterns consistent with Large Language Models (LLMs) or TTS engines." 
+                    : "Content exhibits variations in structure and tone consistent with human authorship."}
             </p>
           </div>
 
@@ -371,7 +468,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
             <div className="space-y-3 relative z-10">
               <button className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 transition-colors border border-white/5">
                  <ThumbsDown className="w-4 h-4" />
-                 <span>Report as Misinformation</span>
+                 <span>Flag as AI Content</span>
               </button>
               <button className={`w-full flex items-center justify-center space-x-2 py-3 rounded-xl transition-all font-bold ${
                 result.classification === 'Real' 
@@ -380,10 +477,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
               }`}>
                  <Share2 className="w-4 h-4" />
                  <span>Verify & Share</span>
-              </button>
-              <button className="w-full flex items-center justify-center space-x-2 py-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 transition-colors border border-purple-500/20">
-                 <Lock className="w-4 h-4" />
-                 <span>Generate Blocklist Rule</span>
               </button>
             </div>
           </div>

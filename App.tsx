@@ -7,6 +7,8 @@ import { Education } from './components/Education';
 import { History } from './components/History';
 import { Settings } from './components/Settings';
 import { SocialShield } from './components/SocialShield';
+import { ViralTracker } from './components/ViralTracker';
+import { GeoAnalysis } from './components/GeoAnalysis';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
@@ -14,7 +16,7 @@ const App: React.FC = () => {
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [quickScanText, setQuickScanText] = useState<string>('');
 
-  const handleAnalysisComplete = (result: AnalysisResult, content: string, type: 'text' | 'image' | 'url') => {
+  const handleAnalysisComplete = (result: AnalysisResult, content: string, type: 'text' | 'image' | 'url' | 'video' | 'audio') => {
     const newItem: HistoryItem = {
       ...result,
       id: Math.random().toString(36).substr(2, 9),
@@ -34,6 +36,10 @@ const App: React.FC = () => {
     switch (currentView) {
       case 'dashboard':
         return <Dashboard onAnalyzeTopic={handleQuickScan} />;
+      case 'tracker':
+        return <ViralTracker />;
+      case 'geo':
+        return <GeoAnalysis />;
       case 'analyzer':
         return <Analyzer 
           initialText={quickScanText} 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AreaChart, Area, BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { AlertTriangle, TrendingUp, Users, ShieldCheck, Map, ArrowUpRight, Globe, Radio, Activity, Search } from 'lucide-react';
+import { AlertTriangle, TrendingUp, Users, ShieldCheck, Map, ArrowUpRight, Globe, Radio, Activity, Search, Cpu, Zap } from 'lucide-react';
 import { View } from '../types';
 
 interface DashboardProps {
@@ -26,11 +26,13 @@ const categoryData = [
 ];
 
 const MOCK_LIVE_FEED = [
-    { platform: 'Twitter', text: 'Just saw a video of the president dancing on Mars! #Viral', status: 'Fake', confidence: 99 },
-    { platform: 'Facebook', text: 'New health study confirms coffee extends life by 200 years.', status: 'Misleading', confidence: 85 },
-    { platform: 'Reddit', text: 'Leaked documents from Area 51 showing alien soup recipes.', status: 'Satire', confidence: 92 },
-    { platform: 'News', text: 'Central Bank announces interest rate hike of 0.25%.', status: 'Real', confidence: 98 },
-    { platform: 'TikTok', text: 'Filter that shows your future soulmate is definitely scientific.', status: 'Fake', confidence: 95 },
+    { platform: 'Twitter', text: 'Just saw a video of the president dancing on Mars! #Viral', status: 'Fake', confidence: 99, tech: 'ViT-B/16' },
+    { platform: 'Facebook', text: 'New health study confirms coffee extends life by 200 years.', status: 'Misleading', confidence: 85, tech: 'BERT-L' },
+    { platform: 'Reddit', text: 'Leaked documents from Area 51 showing alien soup recipes.', status: 'Satire', confidence: 92, tech: 'LSTM-Seq' },
+    { platform: 'News', text: 'Central Bank announces interest rate hike of 0.25%.', status: 'Real', confidence: 98, tech: 'BERT-Base' },
+    { platform: 'TikTok', text: 'Filter that shows your future soulmate is definitely scientific.', status: 'Fake', confidence: 95, tech: 'ViT-L/14' },
+    { platform: 'Telegram', text: 'Urgent: Water supply contaminated in sector 7.', status: 'Fake', confidence: 88, tech: 'Gemini-Pro' },
+    { platform: 'Bluesky', text: 'Tech giant merger approved by regulators.', status: 'Real', confidence: 91, tech: 'BERT-L' }
 ];
 
 const CustomTooltip = ({ active, payload, label }: any) => {
@@ -56,11 +58,23 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
 
   // Simulate real-time ingestion
   useEffect(() => {
+    // Initial population
+    const initialItems = MOCK_LIVE_FEED.slice(0, 5).map(item => ({
+        ...item,
+        id: Math.random(),
+        time: new Date().toLocaleTimeString()
+    }));
+    setLiveItems(initialItems);
+
     const interval = setInterval(() => {
         const newItem = MOCK_LIVE_FEED[Math.floor(Math.random() * MOCK_LIVE_FEED.length)];
-        const timestampedItem = { ...newItem, id: Date.now(), time: new Date().toLocaleTimeString() };
-        setLiveItems(prev => [timestampedItem, ...prev].slice(0, 6));
-    }, 2500);
+        const timestampedItem = { 
+            ...newItem, 
+            id: Date.now(), 
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
+        };
+        setLiveItems(prev => [timestampedItem, ...prev].slice(0, 8));
+    }, 3000);
 
     return () => clearInterval(interval);
   }, []);
@@ -204,20 +218,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
                  <div className="flex-1 min-w-0 mr-4">
                      <div className="flex items-center space-x-2 mb-1">
                         <span className="text-[10px] font-bold text-slate-400 px-1.5 py-0.5 rounded bg-black/50 uppercase">{item.platform}</span>
-                        <span className="text-[10px] text-slate-500">{item.time}</span>
+                        <span className="text-[10px] text-slate-500 font-mono">{item.time}</span>
                      </div>
                      <p className="text-xs text-slate-200 truncate font-mono">{item.text}</p>
                  </div>
                  
-                 <div className="flex flex-col items-end flex-shrink-0">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                 <div className="flex flex-col items-end flex-shrink-0 min-w-[80px]">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded border mb-1 ${
                          item.status === 'Real' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
                          item.status === 'Fake' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
-                         'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                         item.status === 'Misleading' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                         'bg-purple-500/10 text-purple-400 border-purple-500/20'
                     }`}>
                         {item.status.toUpperCase()}
                     </span>
-                    <span className="text-[10px] text-slate-500 mt-1">{item.confidence}% Conf.</span>
+                    
+                    <div className="flex items-center space-x-2 mb-1">
+                        <span className="text-[9px] text-slate-400">{item.confidence}%</span>
+                        <div className="w-8 h-1 bg-slate-800 rounded-full overflow-hidden">
+                           <div className={`h-full ${item.confidence > 90 ? 'bg-primary-500' : 'bg-slate-500'}`} style={{width: `${item.confidence}%`}}></div>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center space-x-1 opacity-60">
+                        <Cpu className="w-2 h-2 text-primary-400" />
+                        <span className="text-[9px] text-primary-300 font-mono">{item.tech}</span>
+                    </div>
                  </div>
                </div>
              ))}
