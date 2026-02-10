@@ -1,0 +1,8 @@
+{
+  "name": "TruthLens",
+  "description": "A next-generation cognitive security platform powered by Gemini. Detects misinformation, explains reasoning, and educates users with real-time analytics.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
