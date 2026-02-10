@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { AnalysisResult, Classification } from "../types";
 
 // Helper to sanitize JSON string from Markdown code blocks
@@ -6,17 +6,17 @@ const cleanJsonString = (str: string): string => {
   return str.replace(/```json\n?|\n?```/g, "").trim();
 };
 
+const apiKey = process.env.API_KEY;
+if (!apiKey) {
+  throw new Error("API Key not found");
+}
+const ai = new GoogleGenAI({ apiKey });
+
 export const analyzeContent = async (
   content: string,
   type: 'text' | 'image' | 'url',
   imageBase64?: string
 ): Promise<AnalysisResult> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) {
-    throw new Error("API Key not found");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
 
   // System instruction for the persona
   const systemInstruction = `
@@ -143,5 +143,41 @@ export const analyzeContent = async (
       isAiGenerated: false,
       timestamp: Date.now()
     };
+  }
+};
+
+export const generateAudioReport = async (
+  summary: string,
+  classification: string,
+  language: string,
+  gender: 'male' | 'female'
+): Promise<string | undefined> => {
+  try {
+    const voiceName = gender === 'female' ? 'Kore' : 'Fenrir';
+    const prompt = `
+      Act as a professional news anchor. 
+      Translate the following verification report summary into ${language} and speak it clearly and fluently.
+      Verification Status: ${classification}.
+      Summary: ${summary}.
+      Start by stating the status clearly in ${language}.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: voiceName },
+          },
+        },
+      },
+    });
+
+    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+  } catch (e) {
+    console.error("TTS Error:", e);
+    throw e;
   }
 };
