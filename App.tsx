@@ -6,6 +6,7 @@ import { Analyzer } from './components/Analyzer';
 import { Education } from './components/Education';
 import { History } from './components/History';
 import { Settings } from './components/Settings';
+import { SocialShield } from './components/SocialShield';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
@@ -38,6 +39,8 @@ const App: React.FC = () => {
           initialText={quickScanText} 
           onAnalysisComplete={handleAnalysisComplete} 
         />;
+      case 'shield':
+        return <SocialShield />;
       case 'history':
         return <History 
           history={history} 

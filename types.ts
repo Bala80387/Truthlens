@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'analyzer' | 'education' | 'settings' | 'history';
+export type View = 'dashboard' | 'analyzer' | 'education' | 'settings' | 'history' | 'shield';
 
 export type Classification = 'Real' | 'Fake' | 'Misleading' | 'Satire' | 'Unverified';
 
