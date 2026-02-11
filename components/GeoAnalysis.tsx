@@ -125,13 +125,13 @@ export const GeoAnalysis: React.FC = () => {
         setSelectedRegion(prev => {
             if (!prev) return null;
 
-            // Fluctuate campaigns randomly (+/- 0 or 1)
-            const campaignChange = Math.random() > 0.6 ? (Math.random() > 0.5 ? 1 : -1) : 0;
+            // Fluctuate campaigns randomly (-2 to +2)
+            const campaignChange = Math.floor(Math.random() * 5) - 2;
             const newCampaigns = Math.max(1, prev.activeCampaigns + campaignChange);
 
-            // Fluctuate threat level (Rare event)
+            // Fluctuate threat level (10% chance)
             let newThreatLevel = prev.threatLevel;
-            if (Math.random() > 0.95) {
+            if (Math.random() > 0.90) {
                  const levels: ('Low' | 'Moderate' | 'High' | 'Critical')[] = ['Low', 'Moderate', 'High', 'Critical'];
                  const idx = levels.indexOf(prev.threatLevel);
                  const move = Math.random() > 0.5 ? 1 : -1;
@@ -139,11 +139,11 @@ export const GeoAnalysis: React.FC = () => {
                  newThreatLevel = levels[newIdx];
             }
 
-            // Update Narrative Context (Occasional)
+            // Update Narrative Context (25% chance)
             let newNarrative = prev.dominantNarrative;
-            if (Math.random() > 0.8) {
+            if (Math.random() > 0.75) {
                 const base = prev.dominantNarrative.split(' [')[0];
-                const states = ['[Trending]', '[Spiking]', '[Contained]', '[Viral]', ''];
+                const states = ['[Trending]', '[Spiking]', '[Contained]', '[Viral]', '[Mutating]', ''];
                 const newState = states[Math.floor(Math.random() * states.length)];
                 newNarrative = newState ? `${base} ${newState}` : base;
             }
@@ -155,7 +155,7 @@ export const GeoAnalysis: React.FC = () => {
                 dominantNarrative: newNarrative
             };
 
-            // Sync with map view
+            // Sync with map view immediately
             setRegions(currentRegions => 
               currentRegions.map(r => r.id === updated.id ? updated : r)
             );
@@ -163,22 +163,25 @@ export const GeoAnalysis: React.FC = () => {
             return updated;
         });
 
-        // Update Charts
-        setTrendData(prev => {
-            if (prev.length === 0) return prev;
-            const lastItem = prev[prev.length - 1];
-            // Random walk
-            const newValue = Math.max(0, Math.min(100, lastItem.value + (Math.random() * 10 - 5)));
-            return [...prev.slice(1), { time: lastItem.time + 1, value: newValue }];
-        });
-        
-        // Update Report Stability Score to match charts
+        // Update Charts & Stability Score
         setIntelReport(prev => {
             if (!prev) return null;
-            const fluctuation = Math.floor(Math.random() * 3) - 1;
+            // Stability correlates inversely with threat level changes simulated above
+            // But here we just add noise for the visual chart
+            const fluctuation = Math.floor(Math.random() * 7) - 3;
+            const newScore = Math.max(0, Math.min(100, prev.stabilityScore + fluctuation));
+            
+            // Push new data point to trend chart
+            setTrendData(currentTrend => {
+                 if (currentTrend.length === 0) return currentTrend;
+                 const lastTime = currentTrend[currentTrend.length - 1].time;
+                 const newData = [...currentTrend.slice(1), { time: lastTime + 1, value: newScore }];
+                 return newData;
+            });
+
             return {
                 ...prev,
-                stabilityScore: Math.max(0, Math.min(100, prev.stabilityScore + fluctuation))
+                stabilityScore: newScore
             };
         });
 
@@ -195,8 +198,8 @@ export const GeoAnalysis: React.FC = () => {
                 // Skip the currently selected region (it is handled by the foreground effect)
                 if (selectedRegion && region.id === selectedRegion.id) return region;
 
-                // Randomly change threat level for background activity (15% chance)
-                if (Math.random() > 0.85) {
+                // Randomly change threat level for background activity (20% chance)
+                if (Math.random() > 0.8) {
                     const levels: ('Low' | 'Moderate' | 'High' | 'Critical')[] = ['Low', 'Moderate', 'High', 'Critical'];
                     const currentIdx = levels.indexOf(region.threatLevel);
                     
@@ -214,16 +217,16 @@ export const GeoAnalysis: React.FC = () => {
                     return {
                         ...region,
                         threatLevel: levels[newIdx],
-                        activeCampaigns: Math.max(0, region.activeCampaigns + campaignDrift)
+                        activeCampaigns: Math.max(1, region.activeCampaigns + campaignDrift)
                     };
                 }
                 return region;
             });
         });
-    }, 2500); // Background update cycle
+    }, 2000); // Faster background update cycle
 
     return () => clearInterval(interval);
-  }, [selectedRegion?.id]); // Restart if selection changes to ensure we protect the correct region
+  }, [selectedRegion?.id]); // Restart if selection changes
 
   const toggleFilter = (type: string) => {
     if (activeFilters.includes(type)) {
@@ -240,6 +243,13 @@ export const GeoAnalysis: React.FC = () => {
         case 'Moderate': return '#eab308'; // yellow
         default: return '#3b82f6'; // blue
     }
+  };
+  
+  const getPulseDuration = (campaigns: number) => {
+      // More campaigns = faster pulse. Range approx 1s to 4s.
+      // Cap campaigns at 50 for max speed calculation.
+      const speed = Math.max(1, 4 - (campaigns / 15));
+      return `${speed}s`;
   };
 
   const handleRegionClick = async (region: GeoRegion) => {
@@ -415,8 +425,8 @@ export const GeoAnalysis: React.FC = () => {
                   >
                       {/* Pulse Effect */}
                       <circle cx={region.coordinates.x} cy={region.coordinates.y} r="20" fill={getRegionColor(region.threatLevel)} opacity="0.1">
-                         <animate attributeName="r" from="15" to="35" dur="3s" repeatCount="indefinite" />
-                         <animate attributeName="opacity" from="0.3" to="0" dur="3s" repeatCount="indefinite" />
+                         <animate attributeName="r" from="15" to="35" dur={`${getPulseDuration(region.activeCampaigns)}`} repeatCount="indefinite" />
+                         <animate attributeName="opacity" from="0.3" to="0" dur={`${getPulseDuration(region.activeCampaigns)}`} repeatCount="indefinite" />
                       </circle>
                       
                       {/* Core Node */}
