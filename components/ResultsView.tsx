@@ -392,76 +392,78 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                 {/* Perplexity / Text Complexity */}
-                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                    <div className="flex justify-between items-center mb-2">
-                       <span className="text-xs text-slate-400 font-bold uppercase">Perplexity Score</span>
-                       <span className="text-xs font-mono text-white">{result.technicalMetrics?.perplexityScore || 0}/100</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full mb-2">
-                       <div className="h-full bg-blue-500 rounded-full" style={{width: `${result.technicalMetrics?.perplexityScore || 0}%`}}></div>
-                    </div>
-                    <p className="text-[10px] text-slate-500">Measures text complexity. Low scores often indicate AI.</p>
-                 </div>
-
-                 {/* Burstiness / Sentence Variation */}
-                 <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                    <div className="flex justify-between items-center mb-2">
-                       <span className="text-xs text-slate-400 font-bold uppercase">Burstiness Score</span>
-                       <span className="text-xs font-mono text-white">{result.technicalMetrics?.burstinessScore || 0}/100</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-800 rounded-full mb-2">
-                       <div className="h-full bg-green-500 rounded-full" style={{width: `${result.technicalMetrics?.burstinessScore || 0}%`}}></div>
-                    </div>
-                    <p className="text-[10px] text-slate-500">Measures sentence variation. AI tends to be monotonous.</p>
-                 </div>
-              </div>
-
-              {/* New Detailed Metrics Section */}
+              {/* Detailed Metrics Section - Now includes Perplexity/Burstiness */}
               {showTechDetails && (
-                <div className="pt-6 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
-                     <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                        <div className="flex items-center space-x-2 mb-2 text-slate-400">
-                            <Binary className="w-4 h-4" />
-                            <span className="text-[10px] font-bold uppercase">Semantic (BERT)</span>
+                <div className="animate-fade-in space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Perplexity / Text Complexity */}
+                        <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs text-slate-400 font-bold uppercase">Perplexity Score</span>
+                                <span className="text-xs font-mono text-white">{result.technicalMetrics?.perplexityScore || 0}/100</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-800 rounded-full mb-2">
+                                <div className="h-full bg-blue-500 rounded-full" style={{width: `${result.technicalMetrics?.perplexityScore || 0}%`}}></div>
+                            </div>
+                            <p className="text-[10px] text-slate-500">Measures text complexity. Low scores often indicate AI.</p>
                         </div>
-                        <div className="flex items-end justify-between">
-                            <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.bertLinguisticScore || 0}</span>
-                            <span className="text-[10px] text-slate-500 mb-1">/100</span>
-                        </div>
-                        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-                            <div className="h-full bg-blue-500" style={{width: `${result.technicalMetrics?.bertLinguisticScore || 0}%`}}></div>
-                        </div>
-                     </div>
 
-                     <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                        <div className="flex items-center space-x-2 mb-2 text-slate-400">
-                            <Activity className="w-4 h-4" />
-                            <span className="text-[10px] font-bold uppercase">Logic (LSTM)</span>
+                        {/* Burstiness / Sentence Variation */}
+                        <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs text-slate-400 font-bold uppercase">Burstiness Score</span>
+                                <span className="text-xs font-mono text-white">{result.technicalMetrics?.burstinessScore || 0}/100</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-slate-800 rounded-full mb-2">
+                                <div className="h-full bg-green-500 rounded-full" style={{width: `${result.technicalMetrics?.burstinessScore || 0}%`}}></div>
+                            </div>
+                            <p className="text-[10px] text-slate-500">Measures sentence variation. AI tends to be monotonous.</p>
                         </div>
-                        <div className="flex items-end justify-between">
-                            <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.lstmTemporalConsistency || 0}</span>
-                            <span className="text-[10px] text-slate-500 mb-1">/100</span>
-                        </div>
-                        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-                            <div className="h-full bg-purple-500" style={{width: `${result.technicalMetrics?.lstmTemporalConsistency || 0}%`}}></div>
-                        </div>
-                     </div>
+                    </div>
 
-                     <div className="bg-black/40 p-4 rounded-xl border border-white/5">
-                        <div className="flex items-center space-x-2 mb-2 text-slate-400">
-                            <ScanFace className="w-4 h-4" />
-                            <span className="text-[10px] font-bold uppercase">Artifacts (ViT)</span>
+                    <div className="pt-6 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                            <div className="flex items-center space-x-2 mb-2 text-slate-400">
+                                <Binary className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase">Semantic (BERT)</span>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.bertLinguisticScore || 0}</span>
+                                <span className="text-[10px] text-slate-500 mb-1">/100</span>
+                            </div>
+                            <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                                <div className="h-full bg-blue-500" style={{width: `${result.technicalMetrics?.bertLinguisticScore || 0}%`}}></div>
+                            </div>
                         </div>
-                        <div className="flex items-end justify-between">
-                            <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.vitVisualArtifacts || 0}</span>
-                            <span className="text-[10px] text-slate-500 mb-1">/100</span>
+
+                        <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                            <div className="flex items-center space-x-2 mb-2 text-slate-400">
+                                <Activity className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase">Logic (LSTM)</span>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.lstmTemporalConsistency || 0}</span>
+                                <span className="text-[10px] text-slate-500 mb-1">/100</span>
+                            </div>
+                            <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                                <div className="h-full bg-purple-500" style={{width: `${result.technicalMetrics?.lstmTemporalConsistency || 0}%`}}></div>
+                            </div>
                         </div>
-                        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
-                            <div className="h-full bg-red-500" style={{width: `${result.technicalMetrics?.vitVisualArtifacts || 0}%`}}></div>
+
+                        <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                            <div className="flex items-center space-x-2 mb-2 text-slate-400">
+                                <ScanFace className="w-4 h-4" />
+                                <span className="text-[10px] font-bold uppercase">Artifacts (ViT)</span>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.vitVisualArtifacts || 0}</span>
+                                <span className="text-[10px] text-slate-500 mb-1">/100</span>
+                            </div>
+                            <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                                <div className="h-full bg-red-500" style={{width: `${result.technicalMetrics?.vitVisualArtifacts || 0}%`}}></div>
+                            </div>
                         </div>
-                     </div>
+                    </div>
                 </div>
               )}
           </div>
