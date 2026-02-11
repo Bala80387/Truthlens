@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GeoRegion, AttackVector } from '../types';
 import { analyzeGeoThreat } from '../services/geminiService';
-import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight } from 'lucide-react';
+import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const MOCK_REGIONS: GeoRegion[] = [
@@ -32,6 +32,34 @@ const TICKER_ITEMS = [
     "INFO: New narrative vector 'Project Blue' emerging in social graph"
 ];
 
+// Simulated External Intelligence Feed (No API Quota Usage)
+const DETAILED_THREAT_INTEL: Record<string, Array<{ name: string; type: string; tactics: string[]; activity: string }>> = {
+  'North America': [
+    { name: "APT-29 (Cozy Bear)", type: "State-Sponsored", tactics: ["Spearphishing", "Cloud Exploitation"], activity: "Targeting diplomatic entities via compromised O365." },
+    { name: "Carbon Spider", type: "Financially Motivated", tactics: ["Ransomware", "Access Brokerage"], activity: "Shift to targeting hospitality sector." }
+  ],
+  'South America': [
+    { name: "Lapsus$", type: "Extortion Group", tactics: ["Insider Threat", "Social Engineering"], activity: "High-profile data leaks from telecom." },
+    { name: "Blind Eagle", type: "APT", tactics: ["Phishing", "RATs"], activity: "Targeting government institutions in Andes region." }
+  ],
+  'Europe': [
+    { name: "Sandworm", type: "State-Sponsored", tactics: ["Wiper Malware", "OT Attacks"], activity: "Disruptive operations against energy grids." },
+    { name: "Doppelgänger", type: "Disinformation", tactics: ["Typosquatting", "Fake Fact-Checks"], activity: "Active campaign spreading anti-migration narratives." }
+  ],
+  'Asia': [
+    { name: "Lazarus Group", type: "State-Sponsored", tactics: ["Crypto Theft", "Social Engineering"], activity: "Funding generation via DeFi exploits." },
+    { name: "Mustang Panda", type: "APT", tactics: ["USB Propagation", "PlugX Malware"], activity: "Espionage targeting NGOs and government." }
+  ],
+  'Africa': [
+    { name: "Billbug", type: "Espionage", tactics: ["Cert. Spoofing", "Backdoors"], activity: "Targeting foreign exchange and taxation agencies." },
+    { name: "MoustachedBouncer", type: "Surveillance", tactics: ["AiTM", "ISP Injection"], activity: "Intercepting traffic from embassies." }
+  ],
+  'Oceania': [
+    { name: "Gelsemium", type: "APT", tactics: ["Supply Chain", "Web Shells"], activity: "Reconnaissance on academic institutions." },
+    { name: "Bluebottle", type: "Cybercriminal", tactics: ["Banking Trojans"], activity: "Targeting financial sector with new loader." }
+  ]
+};
+
 export const GeoAnalysis: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<GeoRegion | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -56,6 +84,70 @@ export const GeoAnalysis: React.FC = () => {
     }, 4000);
     return () => clearInterval(timer);
   }, []);
+
+  // Real-time Simulation Effect for Active Region
+  useEffect(() => {
+    if (!selectedRegion) return;
+
+    const interval = setInterval(() => {
+        // Update Region Data
+        setSelectedRegion(prev => {
+            if (!prev) return null;
+
+            // Fluctuate campaigns randomly (+/- 0 or 1)
+            const campaignChange = Math.random() > 0.6 ? (Math.random() > 0.5 ? 1 : -1) : 0;
+            const newCampaigns = Math.max(1, prev.activeCampaigns + campaignChange);
+
+            // Fluctuate threat level (Rare event)
+            let newThreatLevel = prev.threatLevel;
+            if (Math.random() > 0.95) {
+                 const levels: ('Low' | 'Moderate' | 'High' | 'Critical')[] = ['Low', 'Moderate', 'High', 'Critical'];
+                 const idx = levels.indexOf(prev.threatLevel);
+                 const move = Math.random() > 0.5 ? 1 : -1;
+                 const newIdx = Math.max(0, Math.min(3, idx + move));
+                 newThreatLevel = levels[newIdx];
+            }
+
+            // Update Narrative Context (Occasional)
+            let newNarrative = prev.dominantNarrative;
+            if (Math.random() > 0.8) {
+                const base = prev.dominantNarrative.split(' [')[0];
+                const states = ['[Trending]', '[Spiking]', '[Contained]', '[Viral]', ''];
+                const newState = states[Math.floor(Math.random() * states.length)];
+                newNarrative = newState ? `${base} ${newState}` : base;
+            }
+
+            return {
+                ...prev,
+                activeCampaigns: newCampaigns,
+                threatLevel: newThreatLevel,
+                dominantNarrative: newNarrative
+            };
+        });
+
+        // Update Charts
+        setTrendData(prev => {
+            if (prev.length === 0) return prev;
+            const lastItem = prev[prev.length - 1];
+            // Random walk
+            const newValue = Math.max(0, Math.min(100, lastItem.value + (Math.random() * 10 - 5)));
+            return [...prev.slice(1), { time: lastItem.time + 1, value: newValue }];
+        });
+        
+        // Update Report Stability Score to match charts
+        setIntelReport(prev => {
+            if (!prev) return null;
+            const fluctuation = Math.floor(Math.random() * 3) - 1;
+            return {
+                ...prev,
+                stabilityScore: Math.max(0, Math.min(100, prev.stabilityScore + fluctuation))
+            };
+        });
+
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [selectedRegion?.id]);
 
   const toggleFilter = (type: string) => {
     if (activeFilters.includes(type)) {
@@ -121,6 +213,10 @@ export const GeoAnalysis: React.FC = () => {
   };
 
   const visibleVectors = MOCK_VECTORS.filter(v => activeFilters.includes(v.type));
+
+  const currentThreatActors = selectedRegion 
+    ? (DETAILED_THREAT_INTEL[selectedRegion.name] || DETAILED_THREAT_INTEL['North America'])
+    : [];
 
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6 animate-fade-in pb-10">
@@ -372,17 +468,35 @@ export const GeoAnalysis: React.FC = () => {
                                 </div>
                             </div>
 
-                             {/* Primary Threat Actors */}
+                             {/* Primary Threat Actors - Enhanced */}
                              <div className="space-y-3">
                                 <h4 className="text-xs font-bold text-red-400 uppercase flex items-center tracking-wider">
                                     <Users className="w-4 h-4 mr-2" /> Primary Threat Actors
                                 </h4>
-                                <div className="flex flex-wrap gap-2">
-                                    {intelReport.threatActors.map((actor, i) => (
-                                        <span key={i} className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs font-bold flex items-center">
-                                            <Target className="w-3 h-3 mr-1.5" />
-                                            {actor}
-                                        </span>
+                                <div className="space-y-3">
+                                    {currentThreatActors.map((actor: any, i: number) => (
+                                        <div key={i} className="bg-red-500/5 border border-red-500/10 p-3 rounded-xl hover:bg-red-500/10 transition-colors">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <span className="text-sm font-bold text-red-300 flex items-center">
+                                                    <Target className="w-3 h-3 mr-2" /> {actor.name}
+                                                </span>
+                                                <span className="text-[10px] bg-red-500/10 px-2 py-0.5 rounded text-red-400 border border-red-500/20 uppercase font-bold">{actor.type}</span>
+                                            </div>
+                                            <div className="space-y-2 pl-5 border-l-2 border-red-500/20">
+                                                <div className="flex flex-col items-start text-xs text-slate-400">
+                                                    <span className="text-slate-500 uppercase text-[10px] font-bold mb-0.5">Known Tactics</span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {actor.tactics.map((t: string, idx: number) => (
+                                                            <span key={idx} className="bg-black/40 px-1.5 py-0.5 rounded text-slate-300 border border-white/5">{t}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="flex flex-col items-start text-xs text-slate-400">
+                                                    <span className="text-slate-500 uppercase text-[10px] font-bold mb-0.5">Recent Activity</span>
+                                                    <span className="text-slate-300 italic">"{actor.activity}"</span>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
