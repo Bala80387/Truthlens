@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GeoRegion, AttackVector } from '../types';
 import { analyzeGeoThreat } from '../services/geminiService';
-import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword } from 'lucide-react';
+import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword, Eye, Calendar, User } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const MOCK_REGIONS: GeoRegion[] = [
@@ -60,7 +60,19 @@ const DETAILED_THREAT_INTEL: Record<string, Array<{ name: string; type: string; 
   ]
 };
 
+interface ReportDetail {
+  title: string;
+  date: string;
+  id: string;
+  author: string;
+  classification: string;
+  summary: string;
+  keyFindings: string[];
+  indicators: string[];
+}
+
 export const GeoAnalysis: React.FC = () => {
+  const [regions, setRegions] = useState<GeoRegion[]>(MOCK_REGIONS);
   const [selectedRegion, setSelectedRegion] = useState<GeoRegion | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [intelReport, setIntelReport] = useState<{
@@ -77,6 +89,10 @@ export const GeoAnalysis: React.FC = () => {
   const [tickerIndex, setTickerIndex] = useState(0);
   const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'active'>('idle');
 
+  // Report Modal States
+  const [viewingReport, setViewingReport] = useState<ReportDetail | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState<string | null>(null);
+
   // Ticker Animation
   useEffect(() => {
     const timer = setInterval(() => {
@@ -85,7 +101,7 @@ export const GeoAnalysis: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Real-time Simulation Effect for Active Region
+  // Real-time Simulation Effect for Active Region (Foreground)
   useEffect(() => {
     if (!selectedRegion) return;
 
@@ -117,12 +133,19 @@ export const GeoAnalysis: React.FC = () => {
                 newNarrative = newState ? `${base} ${newState}` : base;
             }
 
-            return {
+            const updated = {
                 ...prev,
                 activeCampaigns: newCampaigns,
                 threatLevel: newThreatLevel,
                 dominantNarrative: newNarrative
             };
+
+            // Sync with map view
+            setRegions(currentRegions => 
+              currentRegions.map(r => r.id === updated.id ? updated : r)
+            );
+
+            return updated;
         });
 
         // Update Charts
@@ -148,6 +171,44 @@ export const GeoAnalysis: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [selectedRegion?.id]);
+
+  // Background Simulation for Unselected Regions
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setRegions(currentRegions => {
+            return currentRegions.map(region => {
+                // Skip the currently selected region (it is handled by the foreground effect)
+                if (selectedRegion && region.id === selectedRegion.id) return region;
+
+                // Randomly change threat level for background activity (15% chance)
+                if (Math.random() > 0.85) {
+                    const levels: ('Low' | 'Moderate' | 'High' | 'Critical')[] = ['Low', 'Moderate', 'High', 'Critical'];
+                    const currentIdx = levels.indexOf(region.threatLevel);
+                    
+                    // Bias towards center (Moderate/High) to keep map dynamic
+                    let move = 0;
+                    if (currentIdx === 0) move = 1; // Low -> Moderate
+                    else if (currentIdx === 3) move = -1; // Critical -> High
+                    else move = Math.random() > 0.5 ? 1 : -1;
+
+                    const newIdx = Math.max(0, Math.min(3, currentIdx + move));
+                    
+                    // Also slight campaign fluctuation
+                    const campaignDrift = Math.random() > 0.5 ? 1 : -1;
+
+                    return {
+                        ...region,
+                        threatLevel: levels[newIdx],
+                        activeCampaigns: Math.max(0, region.activeCampaigns + campaignDrift)
+                    };
+                }
+                return region;
+            });
+        });
+    }, 2500); // Background update cycle
+
+    return () => clearInterval(interval);
+  }, [selectedRegion?.id]); // Restart if selection changes to ensure we protect the correct region
 
   const toggleFilter = (type: string) => {
     if (activeFilters.includes(type)) {
@@ -180,7 +241,7 @@ export const GeoAnalysis: React.FC = () => {
     }));
     setTrendData(newTrendData);
 
-    const vectors = MOCK_VECTORS.filter(v => v.targetRegionId === region.id).map(v => `${v.type} attack from ${MOCK_REGIONS.find(r => r.id === v.sourceRegionId)?.name}`);
+    const vectors = MOCK_VECTORS.filter(v => v.targetRegionId === region.id).map(v => `${v.type} attack from ${regions.find(r => r.id === v.sourceRegionId)?.name || 'Unknown'}`);
     
     // Simulate delay for effect before calling
     await new Promise(r => setTimeout(r, 1000));
@@ -205,6 +266,34 @@ export const GeoAnalysis: React.FC = () => {
     setIsAnalyzing(false);
   };
 
+  const handleOpenReport = async (report: {title: string, date: string}) => {
+      setIsLoadingReport(report.title);
+      // Simulate fetch delay
+      await new Promise(r => setTimeout(r, 1500));
+      
+      const detailedReport: ReportDetail = {
+          title: report.title,
+          date: report.date,
+          id: `INTEL-${Math.floor(Math.random() * 10000)}`,
+          author: "Unit 8200 - Cyber Intelligence",
+          classification: "TOP SECRET // NOFORN",
+          summary: "This intelligence intercept indicates a coordinated effort to leverage localized botnets for narrative shaping. Traffic analysis shows signature patterns consistent with state-aligned actors attempting to destabilize key infrastructure nodes.",
+          keyFindings: [
+              "Lateral movement detected in 42% of targeted subnets.",
+              "Payload delivery via encrypted social channels (Telegram/WhatsApp).",
+              "Use of 'sleeper' accounts aged > 2 years to bypass standard filters."
+          ],
+          indicators: [
+              "IP: 192.168.104.22 (Malicious Node)",
+              "Hash: 5d41402abc4b2a76b9719d911017c592",
+              "Domain: secure-verify-login-update.com"
+          ]
+      };
+      
+      setViewingReport(detailedReport);
+      setIsLoadingReport(null);
+  };
+
   const handleDeploy = () => {
     setDeployStatus('deploying');
     setTimeout(() => {
@@ -219,7 +308,7 @@ export const GeoAnalysis: React.FC = () => {
     : [];
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6 animate-fade-in pb-10">
+    <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6 animate-fade-in pb-10 relative">
       
       {/* Map Visualizer Area */}
       <div className="flex-1 glass-panel rounded-3xl relative overflow-hidden flex items-center justify-center bg-black/60 border-white/5 group shadow-2xl flex-col">
@@ -249,8 +338,8 @@ export const GeoAnalysis: React.FC = () => {
 
               {/* Attack Vectors (Animated Bezier Curves) */}
               {visibleVectors.map((vector, i) => {
-                  const source = MOCK_REGIONS.find(r => r.id === vector.sourceRegionId);
-                  const target = MOCK_REGIONS.find(r => r.id === vector.targetRegionId);
+                  const source = regions.find(r => r.id === vector.sourceRegionId);
+                  const target = regions.find(r => r.id === vector.targetRegionId);
                   if(!source || !target) return null;
                   
                   const midX = (source.coordinates.x + target.coordinates.x) / 2;
@@ -278,7 +367,7 @@ export const GeoAnalysis: React.FC = () => {
               })}
 
               {/* Region Nodes */}
-              {MOCK_REGIONS.map(region => (
+              {regions.map(region => (
                   <g 
                     key={region.id} 
                     onClick={() => handleRegionClick(region)} 
@@ -369,7 +458,7 @@ export const GeoAnalysis: React.FC = () => {
 
       {/* Intelligence Sidebar */}
       <div className={`
-        lg:w-96 glass-panel rounded-3xl border-white/5 flex flex-col transition-all duration-500 overflow-hidden shadow-2xl bg-black/80 backdrop-blur-xl
+        lg:w-96 glass-panel rounded-3xl border-white/5 flex flex-col transition-all duration-500 overflow-hidden shadow-2xl bg-black/80 backdrop-blur-xl relative z-10
         ${selectedRegion ? 'translate-x-0 opacity-100' : 'translate-x-10 opacity-50 pointer-events-none lg:pointer-events-auto lg:translate-x-0 lg:opacity-100'}
       `}>
         {!selectedRegion ? (
@@ -532,9 +621,17 @@ export const GeoAnalysis: React.FC = () => {
                                 </h4>
                                 <div className="space-y-2">
                                     {intelReport.recentReports.map((report, i) => (
-                                        <button key={i} className="w-full text-left bg-black/40 border border-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 p-3 rounded-lg group transition-all">
+                                        <button 
+                                            key={i} 
+                                            onClick={() => handleOpenReport(report)}
+                                            className="w-full text-left bg-black/40 border border-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 p-3 rounded-lg group transition-all"
+                                        >
                                             <div className="flex justify-between items-start">
-                                                <span className="text-xs font-bold text-slate-300 group-hover:text-white line-clamp-1">{report.title}</span>
+                                                <span className="text-xs font-bold text-slate-300 group-hover:text-white line-clamp-1">
+                                                    {isLoadingReport === report.title ? (
+                                                        <span className="animate-pulse text-blue-400">ACCESSING DATABASE...</span>
+                                                    ) : report.title}
+                                                </span>
                                                 <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-blue-400" />
                                             </div>
                                             <span className="text-[10px] text-slate-500 font-mono mt-1 block">{report.date}</span>
@@ -576,6 +673,105 @@ export const GeoAnalysis: React.FC = () => {
             </div>
         )}
       </div>
+
+      {/* Report Modal */}
+      {viewingReport && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setViewingReport(null)}></div>
+              <div className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+                  
+                  {/* Top Secret Header */}
+                  <div className="h-2 bg-red-600 w-full"></div>
+                  <div className="p-6 border-b border-white/10 flex justify-between items-start bg-red-950/10">
+                      <div>
+                          <div className="flex items-center space-x-3 mb-2">
+                              <span className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-sm">Top Secret</span>
+                              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{viewingReport.classification}</span>
+                          </div>
+                          <h2 className="text-xl font-bold text-white leading-tight">{viewingReport.title}</h2>
+                      </div>
+                      <button onClick={() => setViewingReport(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                          <X className="w-5 h-5" />
+                      </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-8 font-mono text-sm space-y-8">
+                      {/* Meta Data Grid */}
+                      <div className="grid grid-cols-2 gap-6 pb-6 border-b border-dashed border-white/10">
+                          <div>
+                              <span className="block text-[10px] text-slate-500 uppercase tracking-widest mb-1">Generated By</span>
+                              <div className="flex items-center space-x-2 text-primary-400 font-bold">
+                                  <User className="w-3 h-3" />
+                                  <span>{viewingReport.author}</span>
+                              </div>
+                          </div>
+                          <div>
+                              <span className="block text-[10px] text-slate-500 uppercase tracking-widest mb-1">Date Logged</span>
+                              <div className="flex items-center space-x-2 text-slate-300">
+                                  <Calendar className="w-3 h-3" />
+                                  <span>{viewingReport.date}</span>
+                              </div>
+                          </div>
+                          <div>
+                              <span className="block text-[10px] text-slate-500 uppercase tracking-widest mb-1">Reference ID</span>
+                              <div className="flex items-center space-x-2 text-slate-300">
+                                  <Hash className="w-3 h-3" />
+                                  <span>{viewingReport.id}</span>
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Summary Section */}
+                      <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                              <Eye className="w-4 h-4 mr-2" /> Executive Summary
+                          </h4>
+                          <p className="text-slate-300 leading-relaxed p-4 bg-white/5 rounded-lg border-l-2 border-primary-500">
+                              {viewingReport.summary}
+                          </p>
+                      </div>
+
+                      {/* Key Findings */}
+                      <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                              <Target className="w-4 h-4 mr-2" /> Key Findings
+                          </h4>
+                          <ul className="space-y-2">
+                              {viewingReport.keyFindings.map((finding, i) => (
+                                  <li key={i} className="flex items-start text-slate-300">
+                                      <span className="mr-3 text-slate-600 mt-1">0{i+1}.</span>
+                                      <span>{finding}</span>
+                                  </li>
+                              ))}
+                          </ul>
+                      </div>
+
+                      {/* IOCs */}
+                      <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-red-400 uppercase tracking-widest flex items-center">
+                              <Lock className="w-4 h-4 mr-2" /> Indicators of Compromise (IOC)
+                          </h4>
+                          <div className="bg-black border border-red-900/30 p-4 rounded-lg space-y-2">
+                              {viewingReport.indicators.map((ioc, i) => (
+                                  <div key={i} className="flex items-center text-xs font-mono text-red-300/80 border-b border-red-900/10 pb-1 last:border-0 last:pb-0">
+                                      <Terminal className="w-3 h-3 mr-2 opacity-50" />
+                                      {ioc}
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+
+                  <div className="p-4 border-t border-white/10 bg-white/5 flex justify-between items-center">
+                      <span className="text-[10px] text-slate-600 font-mono">AUTHORIZED EYES ONLY</span>
+                      <button className="text-xs font-bold text-primary-400 hover:text-primary-300 flex items-center space-x-2">
+                          <FileText className="w-3 h-3" />
+                          <span>Export PDF</span>
+                      </button>
+                  </div>
+              </div>
+          </div>
+      )}
     </div>
   );
 };
