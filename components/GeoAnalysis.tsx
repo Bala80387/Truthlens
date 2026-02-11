@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GeoRegion, AttackVector } from '../types';
 import { analyzeGeoThreat } from '../services/geminiService';
-import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword, Eye, Calendar, User } from 'lucide-react';
+import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword, Eye, Calendar, User, Fingerprint, Network, Cpu } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const MOCK_REGIONS: GeoRegion[] = [
@@ -71,6 +71,18 @@ interface ReportDetail {
   indicators: string[];
 }
 
+interface ActorProfile {
+    name: string;
+    type: string;
+    tactics: string[];
+    activity: string;
+    aliases: string[];
+    origin: string;
+    tools: string[];
+    targetedSectors: string[];
+    relatedReports: { title: string; date: string }[];
+}
+
 export const GeoAnalysis: React.FC = () => {
   const [regions, setRegions] = useState<GeoRegion[]>(MOCK_REGIONS);
   const [selectedRegion, setSelectedRegion] = useState<GeoRegion | null>(null);
@@ -92,6 +104,9 @@ export const GeoAnalysis: React.FC = () => {
   // Report Modal States
   const [viewingReport, setViewingReport] = useState<ReportDetail | null>(null);
   const [isLoadingReport, setIsLoadingReport] = useState<string | null>(null);
+  
+  // Actor Modal States
+  const [viewingActor, setViewingActor] = useState<ActorProfile | null>(null);
 
   // Ticker Animation
   useEffect(() => {
@@ -292,6 +307,31 @@ export const GeoAnalysis: React.FC = () => {
       
       setViewingReport(detailedReport);
       setIsLoadingReport(null);
+  };
+  
+  const handleActorClick = (actor: any) => {
+    // Generate deterministic mock profile based on actor name
+    const id = actor.name.length;
+    
+    const aliases = ["ShadowBroker", "Red October", "Equation Group", "Fancy Bear", "Charming Kitten"].filter((_, i) => (id + i) % 2 === 0);
+    const tools = ["Cobalt Strike", "Mimikatz", "PlugX", "PoisonIvy", "Custom RAT"].filter((_, i) => (id + i) % 3 === 0);
+    const sectors = ["Defense", "Energy", "Finance", "Healthcare", "Government"].filter((_, i) => (id + i) % 2 === 0);
+    
+    const extendedActor: ActorProfile = {
+        name: actor.name,
+        type: actor.type,
+        tactics: actor.tactics,
+        activity: actor.activity,
+        aliases: aliases.length ? aliases : ["Unknown"],
+        origin: selectedRegion?.name === 'Asia' ? 'East Asia' : selectedRegion?.name === 'Europe' ? 'Eastern Europe' : 'Unknown',
+        tools: tools.length ? tools : ["Proprietary Malware"],
+        targetedSectors: sectors.length ? sectors : ["Critical Infrastructure"],
+        relatedReports: [
+            { title: `Analysis of ${actor.name} Infrastructure`, date: "2023-11-05" },
+            { title: "Zero-day Exploit Linked to Group", date: "2023-08-12" }
+        ]
+    };
+    setViewingActor(extendedActor);
   };
 
   const handleDeploy = () => {
@@ -564,9 +604,13 @@ export const GeoAnalysis: React.FC = () => {
                                 </h4>
                                 <div className="space-y-3">
                                     {currentThreatActors.map((actor: any, i: number) => (
-                                        <div key={i} className="bg-red-500/5 border border-red-500/10 p-3 rounded-xl hover:bg-red-500/10 transition-colors">
+                                        <button 
+                                            key={i} 
+                                            onClick={() => handleActorClick(actor)}
+                                            className="w-full text-left bg-red-500/5 border border-red-500/10 p-3 rounded-xl hover:bg-red-500/10 transition-colors group"
+                                        >
                                             <div className="flex justify-between items-start mb-2">
-                                                <span className="text-sm font-bold text-red-300 flex items-center">
+                                                <span className="text-sm font-bold text-red-300 flex items-center group-hover:text-red-200">
                                                     <Target className="w-3 h-3 mr-2" /> {actor.name}
                                                 </span>
                                                 <span className="text-[10px] bg-red-500/10 px-2 py-0.5 rounded text-red-400 border border-red-500/20 uppercase font-bold">{actor.type}</span>
@@ -585,7 +629,12 @@ export const GeoAnalysis: React.FC = () => {
                                                     <span className="text-slate-300 italic">"{actor.activity}"</span>
                                                 </div>
                                             </div>
-                                        </div>
+                                            <div className="mt-2 flex justify-end">
+                                                <span className="text-[10px] text-red-400/70 font-bold uppercase tracking-wide group-hover:text-red-400 flex items-center">
+                                                    View Dossier <ChevronRight className="w-3 h-3 ml-1" />
+                                                </span>
+                                            </div>
+                                        </button>
                                     ))}
                                 </div>
                             </div>
@@ -673,6 +722,110 @@ export const GeoAnalysis: React.FC = () => {
             </div>
         )}
       </div>
+
+      {/* Threat Actor Profile Modal */}
+      {viewingActor && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setViewingActor(null)}></div>
+              <div className="relative w-full max-w-lg bg-[#0a0a0a] border border-red-500/30 rounded-2xl shadow-[0_0_50px_rgba(239,68,68,0.2)] overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+                  
+                  {/* Header */}
+                  <div className="p-6 border-b border-white/10 bg-gradient-to-r from-red-950/30 to-transparent relative">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-red-600"></div>
+                      <div className="flex justify-between items-start">
+                          <div>
+                              <div className="flex items-center space-x-2 mb-2">
+                                  <span className="px-2 py-0.5 bg-red-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-sm">High Value Target</span>
+                                  <span className="text-[10px] text-red-400 font-mono uppercase tracking-widest">ID: {viewingActor.name.substring(0,3).toUpperCase()}-{Math.floor(Math.random()*1000)}</span>
+                              </div>
+                              <h2 className="text-2xl font-black text-white leading-tight mb-1">{viewingActor.name}</h2>
+                              <div className="flex items-center space-x-2 text-sm text-slate-400">
+                                  <span>{viewingActor.type}</span>
+                                  <span className="text-slate-600">|</span>
+                                  <span className="flex items-center"><Globe className="w-3 h-3 mr-1" /> {viewingActor.origin}</span>
+                              </div>
+                          </div>
+                          <button onClick={() => setViewingActor(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                              <X className="w-5 h-5" />
+                          </button>
+                      </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                      
+                      {/* Aliases */}
+                      <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center">
+                              <Fingerprint className="w-3 h-3 mr-2" /> Known Aliases
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                              {viewingActor.aliases.map((alias, i) => (
+                                  <span key={i} className="text-sm font-mono text-white bg-black/40 px-2 py-1 rounded border border-white/10">{alias}</span>
+                              ))}
+                          </div>
+                      </div>
+
+                      {/* Toolset & Tactics */}
+                      <div className="grid grid-cols-2 gap-4">
+                           <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center">
+                                    <Cpu className="w-3 h-3 mr-2" /> Toolset
+                                </h4>
+                                <ul className="space-y-1">
+                                    {viewingActor.tools.map((tool, i) => (
+                                        <li key={i} className="text-xs text-red-300 flex items-center">
+                                            <span className="w-1 h-1 rounded-full bg-red-500 mr-2"></span> {tool}
+                                        </li>
+                                    ))}
+                                </ul>
+                           </div>
+                           <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                                <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 flex items-center">
+                                    <Target className="w-3 h-3 mr-2" /> Targets
+                                </h4>
+                                <ul className="space-y-1">
+                                    {viewingActor.targetedSectors.map((sector, i) => (
+                                        <li key={i} className="text-xs text-slate-300 flex items-center">
+                                            <span className="w-1 h-1 rounded-full bg-slate-500 mr-2"></span> {sector}
+                                        </li>
+                                    ))}
+                                </ul>
+                           </div>
+                      </div>
+                      
+                      {/* Recent Activity */}
+                      <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                              <Activity className="w-3 h-3 mr-2" /> Recent Activity
+                          </h4>
+                          <div className="bg-red-500/5 border border-red-500/10 p-4 rounded-xl">
+                              <p className="text-sm text-slate-300 leading-relaxed italic">"{viewingActor.activity}"</p>
+                              <div className="mt-3 flex gap-2 flex-wrap">
+                                  {viewingActor.tactics.map((t, i) => (
+                                      <span key={i} className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20 uppercase">{t}</span>
+                                  ))}
+                              </div>
+                          </div>
+                      </div>
+
+                      {/* Related Intel */}
+                      <div className="space-y-2">
+                          <h4 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center">
+                              <FileText className="w-3 h-3 mr-2" /> Linked Intelligence
+                          </h4>
+                          <div className="space-y-2">
+                              {viewingActor.relatedReports.map((rep, i) => (
+                                  <div key={i} className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-white/5 hover:border-white/10 transition-colors cursor-pointer group">
+                                      <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{rep.title}</span>
+                                      <span className="text-[10px] text-slate-600 font-mono">{rep.date}</span>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Report Modal */}
       {viewingReport && (
