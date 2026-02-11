@@ -39,6 +39,7 @@ function pcmToAudioBuffer(data: Uint8Array, ctx: AudioContext, sampleRate: numbe
 export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [showTechDetails, setShowTechDetails] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('female');
   
@@ -360,9 +361,18 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
           
           {/* Neural Diagnostics Module */}
           <div className="glass-panel p-6 rounded-3xl border border-white/10">
-              <div className="flex items-center space-x-3 mb-6">
-                <Cpu className="w-6 h-6 text-primary-400" />
-                <h3 className="text-xl font-bold text-white">AI Content Detection</h3>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-3">
+                    <Cpu className="w-6 h-6 text-primary-400" />
+                    <h3 className="text-xl font-bold text-white">AI Content Detection</h3>
+                </div>
+                <button 
+                    onClick={() => setShowTechDetails(!showTechDetails)}
+                    className="flex items-center space-x-1 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-primary-400 hover:bg-white/10 transition-colors"
+                >
+                    <Activity className="w-3 h-3" />
+                    <span>{showTechDetails ? 'Hide Telemetry' : 'View Telemetry'}</span>
+                </button>
               </div>
               
               <div className="mb-6">
@@ -382,7 +392,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
                  </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                  {/* Perplexity / Text Complexity */}
                  <div className="bg-black/40 p-4 rounded-xl border border-white/5">
                     <div className="flex justify-between items-center mb-2">
@@ -407,6 +417,53 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
                     <p className="text-[10px] text-slate-500">Measures sentence variation. AI tends to be monotonous.</p>
                  </div>
               </div>
+
+              {/* New Detailed Metrics Section */}
+              {showTechDetails && (
+                <div className="pt-6 border-t border-white/5 grid grid-cols-1 md:grid-cols-3 gap-4 animate-fade-in">
+                     <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center space-x-2 mb-2 text-slate-400">
+                            <Binary className="w-4 h-4" />
+                            <span className="text-[10px] font-bold uppercase">Semantic (BERT)</span>
+                        </div>
+                        <div className="flex items-end justify-between">
+                            <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.bertLinguisticScore || 0}</span>
+                            <span className="text-[10px] text-slate-500 mb-1">/100</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                            <div className="h-full bg-blue-500" style={{width: `${result.technicalMetrics?.bertLinguisticScore || 0}%`}}></div>
+                        </div>
+                     </div>
+
+                     <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center space-x-2 mb-2 text-slate-400">
+                            <Activity className="w-4 h-4" />
+                            <span className="text-[10px] font-bold uppercase">Logic (LSTM)</span>
+                        </div>
+                        <div className="flex items-end justify-between">
+                            <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.lstmTemporalConsistency || 0}</span>
+                            <span className="text-[10px] text-slate-500 mb-1">/100</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                            <div className="h-full bg-purple-500" style={{width: `${result.technicalMetrics?.lstmTemporalConsistency || 0}%`}}></div>
+                        </div>
+                     </div>
+
+                     <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                        <div className="flex items-center space-x-2 mb-2 text-slate-400">
+                            <ScanFace className="w-4 h-4" />
+                            <span className="text-[10px] font-bold uppercase">Artifacts (ViT)</span>
+                        </div>
+                        <div className="flex items-end justify-between">
+                            <span className="text-2xl font-mono text-white font-bold">{result.technicalMetrics?.vitVisualArtifacts || 0}</span>
+                            <span className="text-[10px] text-slate-500 mb-1">/100</span>
+                        </div>
+                        <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                            <div className="h-full bg-red-500" style={{width: `${result.technicalMetrics?.vitVisualArtifacts || 0}%`}}></div>
+                        </div>
+                     </div>
+                </div>
+              )}
           </div>
 
           {/* Explainable AI Logic Chain */}
