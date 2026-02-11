@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { GeoRegion, AttackVector } from '../types';
 import { analyzeGeoThreat } from '../services/geminiService';
-import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio } from 'lucide-react';
+import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const MOCK_REGIONS: GeoRegion[] = [
   { id: 'na', name: 'North America', threatLevel: 'Moderate', activeCampaigns: 12, dominantNarrative: 'Election Integrity', coordinates: { x: 200, y: 150 } },
@@ -18,12 +19,51 @@ const MOCK_VECTORS: AttackVector[] = [
     { id: 'v3', sourceRegionId: 'as', targetRegionId: 'eu', volume: 90, type: 'State-Sponsored' },
     { id: 'v4', sourceRegionId: 'na', targetRegionId: 'sa', volume: 40, type: 'Organic' },
     { id: 'v5', sourceRegionId: 'eu', targetRegionId: 'af', volume: 55, type: 'Botnet' },
+    { id: 'v6', sourceRegionId: 'na', targetRegionId: 'as', volume: 30, type: 'Organic' },
+    { id: 'v7', sourceRegionId: 'as', targetRegionId: 'au', volume: 70, type: 'Botnet' },
+];
+
+const TICKER_ITEMS = [
+    "INTERCEPTED: Encrypted payload from Server Farm Alpha [Sector 7]",
+    "ALERT: Abnormal traffic spike in sector EU-West detected by sentinel node",
+    "SIGNAL: Deepfake signature matching 'Lazarus' group found in broadcast stream",
+    "TRACE: Botnet C&C server identified in unmapped zone 44X",
+    "STATUS: Global firewall integrity holding at 98.4%",
+    "INFO: New narrative vector 'Project Blue' emerging in social graph"
 ];
 
 export const GeoAnalysis: React.FC = () => {
   const [selectedRegion, setSelectedRegion] = useState<GeoRegion | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [intelReport, setIntelReport] = useState<{riskAssessment: string; strategicImplications: string[]; stabilityScore: number} | null>(null);
+  const [intelReport, setIntelReport] = useState<{
+      riskAssessment: string; 
+      strategicImplications: string[]; 
+      stabilityScore: number;
+      threatActors: string[];
+      recentReports: {title: string, date: string}[];
+  } | null>(null);
+  const [trendData, setTrendData] = useState<{time: number, value: number}[]>([]);
+  
+  // UI States
+  const [activeFilters, setActiveFilters] = useState<string[]>(['Botnet', 'State-Sponsored', 'Organic']);
+  const [tickerIndex, setTickerIndex] = useState(0);
+  const [deployStatus, setDeployStatus] = useState<'idle' | 'deploying' | 'active'>('idle');
+
+  // Ticker Animation
+  useEffect(() => {
+    const timer = setInterval(() => {
+        setTickerIndex(prev => (prev + 1) % TICKER_ITEMS.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const toggleFilter = (type: string) => {
+    if (activeFilters.includes(type)) {
+        setActiveFilters(prev => prev.filter(f => f !== type));
+    } else {
+        setActiveFilters(prev => [...prev, type]);
+    }
+  };
 
   const getRegionColor = (level: string) => {
     switch(level) {
@@ -38,10 +78,19 @@ export const GeoAnalysis: React.FC = () => {
     setSelectedRegion(region);
     setIntelReport(null);
     setIsAnalyzing(true);
+    setDeployStatus('idle');
+
+    // Generate dynamic mock trend data for visual variety
+    const baseStability = region.threatLevel === 'Critical' ? 30 : region.threatLevel === 'High' ? 50 : 80;
+    const newTrendData = Array.from({ length: 20 }, (_, i) => ({
+        time: i,
+        value: Math.max(0, Math.min(100, baseStability + (Math.random() * 20 - 10)))
+    }));
+    setTrendData(newTrendData);
 
     const vectors = MOCK_VECTORS.filter(v => v.targetRegionId === region.id).map(v => `${v.type} attack from ${MOCK_REGIONS.find(r => r.id === v.sourceRegionId)?.name}`);
     
-    // Simulate delay for effect before calling or if no API key
+    // Simulate delay for effect before calling
     await new Promise(r => setTimeout(r, 1000));
     
     try {
@@ -50,27 +99,46 @@ export const GeoAnalysis: React.FC = () => {
     } catch (e) {
         // Fallback for demo
         setIntelReport({
-            riskAssessment: "Simulated Report: Region shows elevated activity consistent with coordinated botnet deployment.",
-            strategicImplications: ["Erosion of public trust", "Policy gridlock", "Social fragmentation"],
-            stabilityScore: 65
+            riskAssessment: "Simulated Report: Region shows elevated activity consistent with coordinated botnet deployment targeting election infrastructure.",
+            strategicImplications: ["Erosion of public trust in verified media", "Policy gridlock due to polarized narratives", "Social fragmentation in key demographics"],
+            stabilityScore: baseStability,
+            threatActors: ["APT-29", "Lazarus Group", "Local Insurgents"],
+            recentReports: [
+                { title: "Sector 7 Vulnerability Assessment", date: "2023-10-12" },
+                { title: "Botnet Traffic Analysis: Q3", date: "2023-09-28" }
+            ]
         });
     }
     
     setIsAnalyzing(false);
   };
 
+  const handleDeploy = () => {
+    setDeployStatus('deploying');
+    setTimeout(() => {
+        setDeployStatus('active');
+    }, 2500);
+  };
+
+  const visibleVectors = MOCK_VECTORS.filter(v => activeFilters.includes(v.type));
+
   return (
     <div className="h-[calc(100vh-140px)] flex flex-col lg:flex-row gap-6 animate-fade-in pb-10">
       
       {/* Map Visualizer Area */}
-      <div className="flex-1 glass-panel rounded-3xl relative overflow-hidden flex items-center justify-center bg-black/60 border-white/5 group shadow-2xl">
+      <div className="flex-1 glass-panel rounded-3xl relative overflow-hidden flex items-center justify-center bg-black/60 border-white/5 group shadow-2xl flex-col">
         
         {/* Abstract Map Grid Background */}
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] pointer-events-none"></div>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.1)_0%,transparent_70%)] pointer-events-none"></div>
+        
+        {/* Scanning Line Effect */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+             <div className="absolute top-0 left-0 w-full h-[2px] bg-primary-500/30 shadow-[0_0_15px_rgba(14,165,233,0.5)] animate-[scan_4s_linear_infinite]"></div>
+        </div>
 
         {/* Interactive Map SVG */}
-        <div className="relative w-full h-full max-w-5xl max-h-[600px] p-10 flex items-center justify-center">
+        <div className="relative w-full flex-1 p-10 flex items-center justify-center">
            <svg viewBox="0 0 900 500" className="w-full h-full drop-shadow-[0_0_30px_rgba(14,165,233,0.2)]">
               
               {/* Simplified World Map Paths (Stylized) */}
@@ -84,22 +152,24 @@ export const GeoAnalysis: React.FC = () => {
               </g>
 
               {/* Attack Vectors (Animated Bezier Curves) */}
-              {MOCK_VECTORS.map((vector, i) => {
+              {visibleVectors.map((vector, i) => {
                   const source = MOCK_REGIONS.find(r => r.id === vector.sourceRegionId);
                   const target = MOCK_REGIONS.find(r => r.id === vector.targetRegionId);
                   if(!source || !target) return null;
                   
                   const midX = (source.coordinates.x + target.coordinates.x) / 2;
                   const midY = (source.coordinates.y + target.coordinates.y) / 2 - 80;
+                  
+                  const color = vector.type === 'State-Sponsored' ? '#ef4444' : vector.type === 'Botnet' ? '#a855f7' : '#22c55e';
 
                   return (
                       <g key={vector.id}>
                           <path 
                              d={`M${source.coordinates.x},${source.coordinates.y} Q${midX},${midY} ${target.coordinates.x},${target.coordinates.y}`} 
                              fill="none" 
-                             stroke={vector.type === 'State-Sponsored' ? '#ef4444' : '#a855f7'}
-                             strokeWidth="2" 
-                             strokeOpacity="0.3"
+                             stroke={color}
+                             strokeWidth="1.5" 
+                             strokeOpacity="0.4"
                              strokeDasharray="4,4"
                           >
                              <animate attributeName="stroke-dashoffset" from="100" to="0" dur={`${3 - (vector.volume/100)}s`} repeatCount="indefinite" />
@@ -125,36 +195,78 @@ export const GeoAnalysis: React.FC = () => {
                       </circle>
                       
                       {/* Core Node */}
-                      <circle cx={region.coordinates.x} cy={region.coordinates.y} r="8" fill={getRegionColor(region.threatLevel)} stroke="rgba(255,255,255,0.8)" strokeWidth="2" className="group-hover/node:fill-white transition-colors" />
+                      <circle cx={region.coordinates.x} cy={region.coordinates.y} r="6" fill={getRegionColor(region.threatLevel)} stroke="rgba(255,255,255,0.8)" strokeWidth="2" className="group-hover/node:fill-white transition-colors" />
                       
                       {/* Label Box */}
-                      <rect x={region.coordinates.x - 40} y={region.coordinates.y + 15} width="80" height="25" rx="4" fill="rgba(0,0,0,0.6)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-                      <text x={region.coordinates.x} y={region.coordinates.y + 32} fill="white" fontSize="9" textAnchor="middle" fontWeight="bold" className="uppercase tracking-wider">
-                          {region.name}
-                      </text>
+                      <foreignObject x={region.coordinates.x - 50} y={region.coordinates.y + 12} width="100" height="40">
+                          <div className="flex flex-col items-center">
+                             <span className="bg-black/70 border border-white/20 text-white text-[10px] font-bold px-2 py-0.5 rounded backdrop-blur-sm uppercase tracking-wider">{region.name}</span>
+                          </div>
+                      </foreignObject>
                   </g>
               ))}
            </svg>
         </div>
 
-        {/* Overlay Stats */}
-        <div className="absolute top-6 left-6 space-y-3">
-            <div className="glass-panel px-4 py-3 rounded-xl border-white/10 bg-black/80 flex items-center space-x-3 backdrop-blur-xl">
-                <Globe className="w-5 h-5 text-primary-400" />
-                <div>
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">Global Status</span>
-                    <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                        <span className="text-white font-bold text-sm">DEFCON 4</span>
+        {/* Top Overlay Controls */}
+        <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start pointer-events-none">
+            {/* Stats */}
+            <div className="space-y-3 pointer-events-auto">
+                <div className="glass-panel px-4 py-3 rounded-xl border-white/10 bg-black/80 flex items-center space-x-3 backdrop-blur-xl">
+                    <Globe className="w-5 h-5 text-primary-400" />
+                    <div>
+                        <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">Global Status</span>
+                        <div className="flex items-center space-x-2">
+                            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                            <span className="text-white font-bold text-sm">DEFCON 4</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="glass-panel px-4 py-3 rounded-xl border-white/10 bg-black/80 flex items-center space-x-3 backdrop-blur-xl">
+                    <Radar className="w-5 h-5 text-green-400" />
+                    <div>
+                        <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">Vectors</span>
+                        <span className="text-white font-bold text-sm">{visibleVectors.length} Active</span>
                     </div>
                 </div>
             </div>
-            <div className="glass-panel px-4 py-3 rounded-xl border-white/10 bg-black/80 flex items-center space-x-3 backdrop-blur-xl">
-                <Radar className="w-5 h-5 text-green-400" />
-                <div>
-                    <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-bold">Vectors</span>
-                    <span className="text-white font-bold text-sm">{MOCK_VECTORS.length} Active</span>
+
+            {/* Filter Toggles */}
+            <div className="glass-panel p-2 rounded-xl border-white/10 bg-black/80 backdrop-blur-xl pointer-events-auto flex flex-col space-y-2">
+                <div className="flex items-center space-x-2 px-2 pb-1 border-b border-white/10 mb-1">
+                    <Filter className="w-3 h-3 text-slate-400" />
+                    <span className="text-[10px] font-bold text-slate-300 uppercase">Filters</span>
                 </div>
+                {[
+                    { id: 'Botnet', label: 'Botnets', color: 'bg-purple-500' },
+                    { id: 'State-Sponsored', label: 'State Actors', color: 'bg-red-500' },
+                    { id: 'Organic', label: 'Organic', color: 'bg-green-500' }
+                ].map(filter => (
+                    <button 
+                        key={filter.id}
+                        onClick={() => toggleFilter(filter.id)}
+                        className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                            activeFilters.includes(filter.id) 
+                            ? 'bg-white/10 text-white' 
+                            : 'text-slate-500 hover:text-slate-300'
+                        }`}
+                    >
+                        <div className={`w-2 h-2 rounded-full ${activeFilters.includes(filter.id) ? filter.color : 'bg-slate-600'}`}></div>
+                        <span>{filter.label}</span>
+                    </button>
+                ))}
+            </div>
+        </div>
+
+        {/* Live Ticker */}
+        <div className="w-full bg-black/80 border-t border-white/10 p-2 overflow-hidden flex items-center backdrop-blur-xl">
+            <div className="flex-shrink-0 px-3 border-r border-white/10 mr-3 flex items-center space-x-2 text-primary-400">
+                <Terminal className="w-3 h-3" />
+                <span className="text-[10px] font-bold font-mono">LIVE_FEED</span>
+            </div>
+            <div className="flex-1 font-mono text-xs text-slate-300 truncate">
+                <span className="animate-pulse mr-2 text-primary-500">>>></span>
+                {TICKER_ITEMS[tickerIndex]}
             </div>
         </div>
       </div>
@@ -214,17 +326,39 @@ export const GeoAnalysis: React.FC = () => {
                         </div>
                     ) : intelReport ? (
                         <>
-                            {/* Stability Gauge */}
-                            <div className="bg-black/40 p-5 rounded-2xl border border-white/5 shadow-inner">
-                                <div className="flex justify-between items-center mb-3">
-                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Regional Stability</span>
-                                    <span className={`text-xl font-mono font-bold ${intelReport.stabilityScore < 40 ? 'text-red-400' : 'text-green-400'}`}>{intelReport.stabilityScore}%</span>
+                            {/* Stability Chart */}
+                            <div className="bg-black/40 p-4 rounded-2xl border border-white/5 shadow-inner">
+                                <div className="flex justify-between items-center mb-4">
+                                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider flex items-center">
+                                        <TrendingUp className="w-3 h-3 mr-1" /> Historical Instability
+                                    </span>
+                                    <span className={`text-sm font-mono font-bold ${intelReport.stabilityScore < 40 ? 'text-red-400' : 'text-green-400'}`}>{intelReport.stabilityScore}%</span>
                                 </div>
-                                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
-                                    <div 
-                                        className={`h-full transition-all duration-1000 ${intelReport.stabilityScore < 40 ? 'bg-red-500' : 'bg-green-500'}`} 
-                                        style={{width: `${intelReport.stabilityScore}%`}}
-                                    ></div>
+                                <div className="h-24 w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <AreaChart data={trendData}>
+                                            <defs>
+                                                <linearGradient id="colorStability" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor={intelReport.stabilityScore < 40 ? "#ef4444" : "#22c55e"} stopOpacity={0.3}/>
+                                                    <stop offset="95%" stopColor={intelReport.stabilityScore < 40 ? "#ef4444" : "#22c55e"} stopOpacity={0}/>
+                                                </linearGradient>
+                                            </defs>
+                                            <Tooltip 
+                                                contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '12px' }}
+                                                itemStyle={{ color: '#fff' }}
+                                                labelStyle={{ display: 'none' }}
+                                            />
+                                            <Area 
+                                                type="monotone" 
+                                                dataKey="value" 
+                                                stroke={intelReport.stabilityScore < 40 ? "#ef4444" : "#22c55e"} 
+                                                fillOpacity={1} 
+                                                fill="url(#colorStability)" 
+                                                strokeWidth={2}
+                                            />
+                                            <YAxis hide domain={[0, 100]} />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
 
@@ -235,6 +369,21 @@ export const GeoAnalysis: React.FC = () => {
                                 </h4>
                                 <div className="text-sm text-slate-300 leading-relaxed p-4 bg-primary-900/10 border border-primary-500/10 rounded-xl">
                                     {intelReport.riskAssessment}
+                                </div>
+                            </div>
+
+                             {/* Primary Threat Actors */}
+                             <div className="space-y-3">
+                                <h4 className="text-xs font-bold text-red-400 uppercase flex items-center tracking-wider">
+                                    <Users className="w-4 h-4 mr-2" /> Primary Threat Actors
+                                </h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {intelReport.threatActors.map((actor, i) => (
+                                        <span key={i} className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300 text-xs font-bold flex items-center">
+                                            <Target className="w-3 h-3 mr-1.5" />
+                                            {actor}
+                                        </span>
+                                    ))}
                                 </div>
                             </div>
 
@@ -261,6 +410,24 @@ export const GeoAnalysis: React.FC = () => {
                                     <span className="text-sm font-medium">"{selectedRegion.dominantNarrative}"</span>
                                 </div>
                             </div>
+                            
+                            {/* Recent Analysis Reports */}
+                            <div className="mt-2 space-y-3">
+                                <h4 className="text-xs font-bold text-blue-400 uppercase flex items-center tracking-wider">
+                                    <FileText className="w-4 h-4 mr-2" /> Related Intelligence
+                                </h4>
+                                <div className="space-y-2">
+                                    {intelReport.recentReports.map((report, i) => (
+                                        <button key={i} className="w-full text-left bg-black/40 border border-white/5 hover:border-blue-500/50 hover:bg-blue-500/10 p-3 rounded-lg group transition-all">
+                                            <div className="flex justify-between items-start">
+                                                <span className="text-xs font-bold text-slate-300 group-hover:text-white line-clamp-1">{report.title}</span>
+                                                <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-blue-400" />
+                                            </div>
+                                            <span className="text-[10px] text-slate-500 font-mono mt-1 block">{report.date}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </>
                     ) : (
                         <div className="text-center text-slate-500 py-10">
@@ -272,10 +439,25 @@ export const GeoAnalysis: React.FC = () => {
 
                 {/* Footer Actions */}
                 <div className="p-4 border-t border-white/10 bg-black/20">
-                    <button className="w-full py-4 rounded-xl bg-white text-black font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center space-x-2">
-                        <Shield className="w-4 h-4" />
-                        <span>Deploy Counter-Narrative</span>
-                    </button>
+                    {deployStatus === 'idle' ? (
+                        <button 
+                            onClick={handleDeploy}
+                            className="w-full py-4 rounded-xl bg-white text-black font-bold text-sm shadow-lg hover:scale-[1.02] transition-transform flex items-center justify-center space-x-2 group"
+                        >
+                            <Shield className="w-4 h-4 group-hover:text-primary-600 transition-colors" />
+                            <span>Deploy Counter-Narrative</span>
+                        </button>
+                    ) : deployStatus === 'deploying' ? (
+                        <button className="w-full py-4 rounded-xl bg-slate-800 text-slate-300 font-bold text-sm flex items-center justify-center space-x-2 cursor-wait">
+                            <div className="w-4 h-4 border-2 border-slate-500 border-t-white rounded-full animate-spin"></div>
+                            <span>Initializing Assets...</span>
+                        </button>
+                    ) : (
+                        <button className="w-full py-4 rounded-xl bg-green-500/10 text-green-400 border border-green-500/20 font-bold text-sm flex items-center justify-center space-x-2">
+                            <CheckCircle className="w-4 h-4" />
+                            <span>Counter-Measures Active</span>
+                        </button>
+                    )}
                 </div>
             </div>
         )}

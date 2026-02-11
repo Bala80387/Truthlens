@@ -82,7 +82,13 @@ export const analyzeGeoThreat = async (
   activeCampaigns: number,
   dominantNarrative: string,
   vectors: string[]
-): Promise<{ riskAssessment: string; strategicImplications: string[]; stabilityScore: number }> => {
+): Promise<{ 
+  riskAssessment: string; 
+  strategicImplications: string[]; 
+  stabilityScore: number;
+  threatActors: string[];
+  recentReports: Array<{ title: string; date: string }>;
+}> => {
   try {
     const prompt = `
       You are a Geopolitical Misinformation Analyst.
@@ -93,10 +99,12 @@ export const analyzeGeoThreat = async (
       - Dominant Narrative: "${dominantNarrative}"
       - Inbound Attack Vectors: ${JSON.stringify(vectors)}
 
-      Provide a JSON output:
+      Provide a JSON output with the following keys:
       1. riskAssessment: A concise situation report (max 50 words).
       2. strategicImplications: 3 bullet points on potential real-world impact (e.g., election interference, civil unrest).
       3. stabilityScore: 0-100 (100 is stable, 0 is collapsing).
+      4. threatActors: List of 3 likely threat actor group names or types specific to this region/narrative (e.g., "Fancy Bear", "Hacktivists").
+      5. recentReports: List of 2 fictional intelligence report titles and dates (YYYY-MM-DD) relevant to the situation.
       
       Return JSON only.
     `;
@@ -113,7 +121,9 @@ export const analyzeGeoThreat = async (
     return {
       riskAssessment: result.riskAssessment || "Data insufficient for assessment.",
       strategicImplications: result.strategicImplications || ["Monitor situation."],
-      stabilityScore: result.stabilityScore || 50
+      stabilityScore: result.stabilityScore || 50,
+      threatActors: result.threatActors || ["Unknown Actors"],
+      recentReports: result.recentReports || []
     };
 
   } catch (e) {
@@ -121,7 +131,9 @@ export const analyzeGeoThreat = async (
     return { 
         riskAssessment: "Service unavailable.", 
         strategicImplications: [], 
-        stabilityScore: 50 
+        stabilityScore: 50,
+        threatActors: ["System Offline"],
+        recentReports: []
     };
   }
 };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { User, Heart, MessageCircle, Share2, ShieldAlert, CheckCircle, AlertTriangle, Send, X, MoreHorizontal, Shield, Lock, Eye, ScanLine, Zap } from 'lucide-react';
+import { User, Heart, MessageCircle, Share2, ShieldAlert, CheckCircle, AlertTriangle, Send, X, MoreHorizontal, Shield, Lock, Eye, ScanLine, Zap, Activity, Search, Brain, Fingerprint } from 'lucide-react';
 import { analyzeContent } from '../services/geminiService';
 import { AnalysisResult } from '../types';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 
 interface Post {
   id: number;
@@ -21,6 +22,8 @@ export const SocialShield: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [warning, setWarning] = useState<AnalysisResult | null>(null);
+  
+  // Feed State
   const [posts, setPosts] = useState<Post[]>([
     {
       id: 1,
@@ -48,17 +51,30 @@ export const SocialShield: React.FC = () => {
     }
   ]);
 
+  // Deep Scan State
+  const [scanningPostId, setScanningPostId] = useState<number | null>(null);
+  const [scannedResults, setScannedResults] = useState<Record<number, AnalysisResult>>({});
+
+  // Real-time Draft Safety Score
+  const [safetyScore, setSafetyScore] = useState(100);
+
   // Simulate typing analysis
   useEffect(() => {
-    if (draft.length > 10) {
+    if (draft.length > 5) {
         setIsScanning(true);
+        // Simple heuristic for demo: decrease safety score based on keywords
+        const riskKeywords = ['shocking', 'secret', 'banned', 'leak', 'guaranteed', '100%'];
+        const foundRisks = riskKeywords.filter(w => draft.toLowerCase().includes(w)).length;
+        setSafetyScore(Math.max(20, 100 - (foundRisks * 15) - (draft.length > 100 ? 5 : 0)));
+        
         const timer = setInterval(() => {
-            setScanProgress(prev => Math.min(prev + 5, 100));
-        }, 100);
+            setScanProgress(prev => Math.min(prev + 10, 100));
+        }, 50);
         return () => clearInterval(timer);
     } else {
         setScanProgress(0);
         setIsScanning(false);
+        setSafetyScore(100);
     }
   }, [draft]);
 
@@ -72,23 +88,16 @@ export const SocialShield: React.FC = () => {
     await new Promise(resolve => setTimeout(resolve, 800));
 
     try {
-      // Determine type based on content
       const type = draft.includes('http') ? 'url' : 'text';
-      // In a real app we call the API, here we simulate for "Without API" request if needed, 
-      // but keeping the call to maintain logic flow. The prompt asked to enhance without API usage, 
-      // implying visual enhancements, not removing existing logic.
       const result = await analyzeContent(draft, type);
       
       if (result.classification === 'Real' || result.classification === 'Unverified') {
-        // Safe to post
         addPost(draft, result.classification, result.confidence);
       } else {
-        // Trigger Warning Shield
         setWarning(result);
       }
     } catch (e) {
       console.error(e);
-      // Fallback allow post on error
       addPost(draft, 'Unverified', 0);
     } finally {
       setIsScanning(false);
@@ -111,6 +120,23 @@ export const SocialShield: React.FC = () => {
     };
     setPosts([newPost, ...posts]);
     setDraft('');
+    setSafetyScore(100);
+  };
+
+  const handleDeepScan = async (postId: number, content: string) => {
+      if (scannedResults[postId]) return; // Already scanned
+
+      setScanningPostId(postId);
+      try {
+          // Simulate scan delay
+          await new Promise(r => setTimeout(r, 1500));
+          const result = await analyzeContent(content, 'text');
+          setScannedResults(prev => ({...prev, [postId]: result}));
+      } catch (e) {
+          console.error("Deep scan failed", e);
+      } finally {
+          setScanningPostId(null);
+      }
   };
 
   const confirmPostAnyway = () => {
@@ -120,8 +146,14 @@ export const SocialShield: React.FC = () => {
     }
   };
 
+  const getScoreColor = (score: number) => {
+      if (score >= 80) return '#22c55e'; // Green
+      if (score >= 50) return '#eab308'; // Yellow
+      return '#ef4444'; // Red
+  };
+
   return (
-    <div className="max-w-4xl mx-auto animate-fade-in relative pb-10">
+    <div className="max-w-6xl mx-auto animate-fade-in relative pb-10">
       <div className="flex items-center justify-between mb-8">
         <div>
             <h2 className="text-3xl font-bold text-white mb-2 flex items-center">
@@ -138,9 +170,10 @@ export const SocialShield: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        {/* Left Column: Profile/Stats */}
-        <div className="hidden md:block space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        {/* Left Column: Profile/Stats (3 cols) */}
+        <div className="hidden lg:block lg:col-span-3 space-y-4">
            <div className="glass-panel p-6 rounded-2xl border-white/5 relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-500 to-purple-500"></div>
               <div className="flex flex-col items-center relative z-10">
@@ -155,7 +188,7 @@ export const SocialShield: React.FC = () => {
               <div className="mt-6 space-y-4">
                  <div>
                     <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">Reputation</span>
+                        <span className="text-slate-400">Digital Trust Score</span>
                         <span className="text-green-400 font-bold">98/100</span>
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
@@ -164,7 +197,7 @@ export const SocialShield: React.FC = () => {
                  </div>
                  <div>
                     <div className="flex justify-between text-xs mb-1">
-                        <span className="text-slate-400">Impact</span>
+                        <span className="text-slate-400">Network Impact</span>
                         <span className="text-purple-400 font-bold">High</span>
                     </div>
                     <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
@@ -177,7 +210,7 @@ export const SocialShield: React.FC = () => {
            <div className="glass-panel p-6 rounded-2xl border-white/5 bg-gradient-to-br from-primary-900/10 to-transparent">
               <div className="flex items-center space-x-2 mb-3 text-primary-400">
                  <Zap className="w-5 h-5" />
-                 <span className="font-bold">Active Scanners</span>
+                 <span className="font-bold text-sm">Active Scanners</span>
               </div>
               <div className="space-y-2">
                  {['Semantic Analysis', 'Image Forensics', 'Source Verification', 'Botnet Detection'].map((scan, i) => (
@@ -190,8 +223,8 @@ export const SocialShield: React.FC = () => {
            </div>
         </div>
 
-        {/* Center Column: Feed */}
-        <div className="md:col-span-2 space-y-6">
+        {/* Center Column: Feed (6 cols) */}
+        <div className="lg:col-span-6 space-y-6">
            {/* Post Creator */}
            <div className="glass-panel p-1 rounded-2xl border-white/10 relative z-10 bg-gradient-to-b from-white/10 to-transparent">
               <div className="bg-black/80 rounded-xl p-4 backdrop-blur-xl">
@@ -219,10 +252,12 @@ export const SocialShield: React.FC = () => {
                                 <button className="p-2 hover:bg-white/5 rounded-full transition-colors"><ShieldAlert className="w-5 h-5" /></button>
                             </div>
                             <div className="flex items-center space-x-3">
-                                {isScanning && (
+                                {isScanning ? (
                                     <span className="text-xs text-primary-400 font-mono animate-pulse">
                                         ANALYZING {scanProgress}%
                                     </span>
+                                ) : (
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Ready</span>
                                 )}
                                 <button 
                                     onClick={handlePost}
@@ -241,55 +276,164 @@ export const SocialShield: React.FC = () => {
 
            {/* Feed Items */}
            <div className="space-y-4">
-              {posts.map(post => (
-                 <div key={post.id} className="glass-panel p-6 rounded-2xl border-white/5 animate-fade-in hover:border-white/10 transition-colors group">
-                    <div className="flex justify-between items-start mb-3">
-                       <div className="flex space-x-3">
-                          <div className={`w-10 h-10 rounded-full ${post.avatarColor} flex items-center justify-center shadow-lg`}>
-                              <span className="font-bold text-white text-xs">{post.author[0]}</span>
-                          </div>
-                          <div>
-                             <div className="flex items-center space-x-2">
-                                <span className="text-white font-bold hover:underline cursor-pointer">{post.author}</span>
-                                <span className="text-slate-500 text-sm">{post.handle}</span>
-                                <span className="text-slate-600 text-xs">• {post.time}</span>
+              {posts.map(post => {
+                  const result = scannedResults[post.id];
+                  return (
+                     <div key={post.id} className="glass-panel p-6 rounded-2xl border-white/5 animate-fade-in hover:border-white/10 transition-colors group relative overflow-hidden">
+                        {scanningPostId === post.id && (
+                             <div className="absolute inset-0 bg-black/60 z-20 flex flex-col items-center justify-center backdrop-blur-sm animate-fade-in">
+                                 <div className="w-10 h-10 border-2 border-primary-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                                 <span className="text-xs text-primary-400 font-mono animate-pulse">RUNNING DEEP PACKET INSPECTION...</span>
                              </div>
-                             {post.status === 'Real' && (
-                                <div className="flex items-center space-x-1 mt-1">
-                                    <Shield className="w-3 h-3 text-green-500" />
-                                    <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Verified Safe</span>
+                        )}
+
+                        <div className="flex justify-between items-start mb-3 relative z-10">
+                           <div className="flex space-x-3">
+                              <div className={`w-10 h-10 rounded-full ${post.avatarColor} flex items-center justify-center shadow-lg`}>
+                                  <span className="font-bold text-white text-xs">{post.author[0]}</span>
+                              </div>
+                              <div>
+                                 <div className="flex items-center space-x-2">
+                                    <span className="text-white font-bold hover:underline cursor-pointer">{post.author}</span>
+                                    <span className="text-slate-500 text-sm">{post.handle}</span>
+                                    <span className="text-slate-600 text-xs">• {post.time}</span>
+                                 </div>
+                                 {post.status === 'Real' && (
+                                    <div className="flex items-center space-x-1 mt-1">
+                                        <Shield className="w-3 h-3 text-green-500" />
+                                        <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider">Verified Safe</span>
+                                    </div>
+                                 )}
+                                 {(post.status === 'Fake' || post.status === 'Misleading') && (
+                                    <div className="flex items-center space-x-1 mt-1">
+                                        <AlertTriangle className="w-3 h-3 text-red-500" />
+                                        <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Flagged: {post.status}</span>
+                                    </div>
+                                 )}
+                              </div>
+                           </div>
+                           <button className="text-slate-600 hover:text-white transition-colors"><MoreHorizontal className="w-5 h-5" /></button>
+                        </div>
+                        
+                        <p className="text-slate-200 mb-4 whitespace-pre-wrap leading-relaxed text-[15px] relative z-10">{post.content}</p>
+                        
+                        {/* Deep Scan Result Expansion */}
+                        {result && (
+                            <div className="mb-4 bg-black/40 rounded-xl border border-white/5 p-4 animate-fade-in relative overflow-hidden">
+                                <div className="absolute top-0 left-0 w-1 h-full bg-primary-500"></div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h4 className="text-xs font-bold text-primary-400 uppercase tracking-wider flex items-center">
+                                        <ScanLine className="w-3 h-3 mr-2" /> Diagnostic Report
+                                    </h4>
+                                    <span className="text-[10px] text-slate-500">{result.classification.toUpperCase()}</span>
                                 </div>
-                             )}
-                             {(post.status === 'Fake' || post.status === 'Misleading') && (
-                                <div className="flex items-center space-x-1 mt-1">
-                                    <AlertTriangle className="w-3 h-3 text-red-500" />
-                                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">Flagged: {post.status}</span>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="col-span-2">
+                                        <p className="text-xs text-slate-300 leading-relaxed mb-2">{result.summary}</p>
+                                    </div>
+                                    <div className="bg-white/5 p-2 rounded-lg text-center">
+                                        <span className="block text-[10px] text-slate-500 uppercase">Truth Probability</span>
+                                        <span className={`text-lg font-bold ${result.confidence > 70 ? 'text-green-400' : 'text-red-400'}`}>{result.confidence}%</span>
+                                    </div>
+                                    <div className="bg-white/5 p-2 rounded-lg text-center">
+                                        <span className="block text-[10px] text-slate-500 uppercase">Bot Likelihood</span>
+                                        <span className={`text-lg font-bold ${result.isAiGenerated ? 'text-red-400' : 'text-green-400'}`}>{result.isAiGenerated ? 'High' : 'Low'}</span>
+                                    </div>
                                 </div>
-                             )}
-                          </div>
-                       </div>
-                       <button className="text-slate-600 hover:text-white transition-colors"><MoreHorizontal className="w-5 h-5" /></button>
-                    </div>
-                    
-                    <p className="text-slate-200 mb-4 whitespace-pre-wrap leading-relaxed text-[15px]">{post.content}</p>
-                    
-                    <div className="flex items-center justify-between text-slate-500 pt-3 border-t border-white/5">
-                       <button className="flex items-center space-x-2 hover:text-primary-400 transition-colors group-hover:text-slate-400">
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="text-xs font-medium">{post.comments}</span>
-                       </button>
-                       <button className="flex items-center space-x-2 hover:text-red-400 transition-colors group-hover:text-slate-400">
-                          <Heart className="w-4 h-4" />
-                          <span className="text-xs font-medium">{post.likes}</span>
-                       </button>
-                       <button className="flex items-center space-x-2 hover:text-green-400 transition-colors group-hover:text-slate-400">
-                          <Share2 className="w-4 h-4" />
-                          <span className="text-xs font-medium">Share</span>
-                       </button>
-                    </div>
-                 </div>
-              ))}
+                            </div>
+                        )}
+
+                        <div className="flex items-center justify-between text-slate-500 pt-3 border-t border-white/5 relative z-10">
+                           <div className="flex space-x-6">
+                               <button className="flex items-center space-x-2 hover:text-primary-400 transition-colors group-hover:text-slate-400">
+                                  <MessageCircle className="w-4 h-4" />
+                                  <span className="text-xs font-medium">{post.comments}</span>
+                               </button>
+                               <button className="flex items-center space-x-2 hover:text-red-400 transition-colors group-hover:text-slate-400">
+                                  <Heart className="w-4 h-4" />
+                                  <span className="text-xs font-medium">{post.likes}</span>
+                               </button>
+                               <button className="flex items-center space-x-2 hover:text-green-400 transition-colors group-hover:text-slate-400">
+                                  <Share2 className="w-4 h-4" />
+                                  <span className="text-xs font-medium">Share</span>
+                               </button>
+                           </div>
+                           
+                           {!result && (
+                               <button 
+                                  onClick={() => handleDeepScan(post.id, post.content)}
+                                  className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-primary-400 transition-all border border-transparent hover:border-primary-500/30"
+                               >
+                                  <Search className="w-3 h-3" />
+                                  <span className="text-[10px] font-bold uppercase tracking-wider">Deep Scan</span>
+                               </button>
+                           )}
+                        </div>
+                     </div>
+                  );
+              })}
            </div>
+        </div>
+
+        {/* Right Column: Real-time Analysis (3 cols) */}
+        <div className="hidden lg:block lg:col-span-3 space-y-6">
+            <div className="glass-panel p-6 rounded-2xl border-white/5">
+                <div className="flex items-center space-x-2 mb-6">
+                    <Activity className="w-5 h-5 text-green-400" />
+                    <h3 className="font-bold text-white text-sm">Draft Safety Check</h3>
+                </div>
+                
+                <div className="flex flex-col items-center justify-center mb-6">
+                    <div className="w-32 h-32 relative flex items-center justify-center">
+                         <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={[{value: safetyScore}, {value: 100 - safetyScore}]}
+                                    innerRadius={40}
+                                    outerRadius={50}
+                                    startAngle={90}
+                                    endAngle={-270}
+                                    dataKey="value"
+                                >
+                                    <Cell fill={getScoreColor(safetyScore)} />
+                                    <Cell fill="#333" />
+                                </Pie>
+                            </PieChart>
+                         </ResponsiveContainer>
+                         <div className="absolute inset-0 flex flex-col items-center justify-center">
+                             <span className="text-2xl font-black text-white">{safetyScore}</span>
+                             <span className="text-[8px] text-slate-500 uppercase tracking-widest">Score</span>
+                         </div>
+                    </div>
+                </div>
+
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">Tone Analysis</span>
+                        <span className="text-white font-bold">{draft.length > 5 ? 'Neutral' : '-'}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">Keyword Risk</span>
+                        <span className={`font-bold ${safetyScore < 80 ? 'text-red-400' : 'text-green-400'}`}>
+                            {safetyScore < 80 ? 'High' : 'Low'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between items-center text-xs">
+                        <span className="text-slate-400">Factuality Check</span>
+                        <span className="text-slate-500 italic">Pending Post...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="glass-panel p-6 rounded-2xl border-white/5 bg-blue-900/10">
+                <div className="flex items-center space-x-2 mb-2 text-blue-400">
+                    <Brain className="w-5 h-5" />
+                    <h3 className="font-bold text-sm">AI Guardian</h3>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                    Your drafts are analyzed locally for common misinformation patterns before they leave your device.
+                </p>
+            </div>
         </div>
       </div>
 
