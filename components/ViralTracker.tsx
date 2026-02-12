@@ -106,32 +106,80 @@ export const ViralTracker: React.FC = () => {
   const handleTraceSource = async (trend: ViralTrend) => {
     if (selectedTrend?.id === trend.id) return;
     
+    // Set initial state including the trend to trigger UI updates, but keep isTracing true to show loader
     setSelectedTrend(trend);
     setIsTracing(true);
     setNetworkNodes([]);
     setActionStatus('idle');
     setResponseLog([]);
     
-    // Simulate Processing
-    await new Promise(r => setTimeout(r, 1000));
-    
-    setNetworkNodes(generateNodes(trend.id, 25));
-    setVelocityData(generateVelocityData());
-    setPsychographics(generatePsychographics());
-    setRegionalHeatmap(generateHeatmap());
-    setIsTracing(false);
+    // Context for AI Analysis (Simulated from trend topic)
+    const mockBio = "Alternative news aggregator. Fighting censorship. Not a bot. #Truth #Freedom";
+    const mockPosts = [
+        trend.topic,
+        `They don't want you to see this! ${trend.topic}`,
+        "RT before it gets taken down.",
+        "Breaking news from the front lines.",
+        `Why is the media silent about ${trend.topic.split(' ').slice(0, 3).join(' ')}?`
+    ];
+
+    try {
+        // Run AI Analysis and Artificial Delay in Parallel
+        const [analysisResult] = await Promise.all([
+            analyzeUserRisk(trend.sourceUser.handle, mockBio, mockPosts),
+            new Promise(r => setTimeout(r, 2000)) // Keep the dramatic tracing effect
+        ]);
+
+        // Merge AI insights into the selected trend
+        const enhancedTrend: ViralTrend = {
+            ...trend,
+            sourceUser: {
+                ...trend.sourceUser,
+                botProbability: analysisResult.botProbability,
+                credibilityScore: analysisResult.credibilityScore,
+                networkCluster: analysisResult.cluster as any
+            }
+        };
+        
+        setSelectedTrend(enhancedTrend);
+
+        // Generate Visualizations
+        setNetworkNodes(generateNodes(trend.id, 25));
+        setVelocityData(generateVelocityData());
+        setPsychographics(generatePsychographics());
+        setRegionalHeatmap(generateHeatmap());
+
+    } catch (e) {
+        console.error("User analysis failed", e);
+        // Fallback to existing mock data
+        setNetworkNodes(generateNodes(trend.id, 25));
+        setVelocityData(generateVelocityData());
+        setPsychographics(generatePsychographics());
+        setRegionalHeatmap(generateHeatmap());
+    } finally {
+        setIsTracing(false);
+    }
   };
 
   const handleCounterMeasure = (type: string) => {
       setActionStatus('deploying');
       setResponseLog(prev => [...prev, `> Initializing ${type} protocol...`]);
       
-      setTimeout(() => setResponseLog(prev => [...prev, `> Generating counter-narrative vectors...`]), 800);
-      setTimeout(() => setResponseLog(prev => [...prev, `> Injecting fact-check metadata...`]), 1600);
-      setTimeout(() => {
-          setResponseLog(prev => [...prev, `> Deployment Successful. Monitoring impact.`]);
-          setActionStatus('active');
-      }, 2500);
+      if (type === 'Truth Vector') {
+           setTimeout(() => setResponseLog(prev => [...prev, `> Analyzing narrative gaps...`]), 800);
+           setTimeout(() => setResponseLog(prev => [...prev, `> Synthesizing verified counter-claims...`]), 1500);
+           setTimeout(() => {
+               setResponseLog(prev => [...prev, `> Truth Vector deployed across 14 nodes.`]);
+               setActionStatus('active');
+           }, 2500);
+      } else {
+           setTimeout(() => setResponseLog(prev => [...prev, `> Targeting node infrastructure...`]), 800);
+           setTimeout(() => setResponseLog(prev => [...prev, `> Isolating propagation routes...`]), 1500);
+           setTimeout(() => {
+               setResponseLog(prev => [...prev, `> Node neutralized. Infection rate dropping.`]);
+               setActionStatus('active');
+           }, 2500);
+      }
   };
 
   const CustomTooltip = ({ active, payload, label }: any) => {
@@ -480,7 +528,7 @@ export const ViralTracker: React.FC = () => {
                                disabled={actionStatus === 'deploying'}
                                className="flex-1 flex items-center justify-between px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white transition-all disabled:opacity-50 group"
                            >
-                               <span className="flex items-center"><MessageSquare className="w-4 h-4 mr-2 text-blue-400" /> Generate Rebuttal</span>
+                               <span className="flex items-center"><MessageSquare className="w-4 h-4 mr-2 text-blue-400" /> Deploy Truth Vector</span>
                                <CornerDownRight className="w-3 h-3 text-slate-600 group-hover:text-white" />
                            </button>
                            
