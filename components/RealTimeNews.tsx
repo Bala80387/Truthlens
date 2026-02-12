@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { NewsItem, Classification } from '../types';
-import { Search, Filter, RefreshCw, Zap, TrendingUp, AlertTriangle, CheckCircle, Clock, Globe, Shield, Terminal, Hash, ChevronRight, Play, Radio } from 'lucide-react';
+import { Search, Filter, RefreshCw, Zap, TrendingUp, AlertTriangle, CheckCircle, Clock, Globe, Shield, Terminal, Hash, ChevronRight, Play, Radio, X, FileText, Share2, MapPin, Activity, BarChart2, Eye, Lock } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 // --- PROCEDURAL GENERATION ENGINE ---
 
@@ -71,6 +72,12 @@ export const RealTimeNews: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLive, setIsLive] = useState(true);
   const [tickerOffset, setTickerOffset] = useState(0);
+  const [viewingItem, setViewingItem] = useState<NewsItem | null>(null);
+  
+  // Sidebar Chart Data
+  const [velocityData, setVelocityData] = useState(
+      Array.from({ length: 20 }, (_, i) => ({ time: i, value: Math.floor(Math.random() * 50) + 30 }))
+  );
 
   // Initial Population
   useEffect(() => {
@@ -88,8 +95,15 @@ export const RealTimeNews: React.FC = () => {
       const newItem = generateNewsItem();
       setNews(prev => {
         const updated = [newItem, ...prev];
-        return updated.slice(0, 50); // Keep max 50 items to prevent memory bloat
+        return updated.slice(0, 50); // Keep max 50 items
       });
+
+      // Update Chart Data
+      setVelocityData(prev => {
+          const newValue = Math.floor(Math.random() * 80) + 20;
+          return [...prev.slice(1), { time: prev[prev.length - 1].time + 1, value: newValue }];
+      });
+
     }, 3500); // New item every 3.5s
 
     return () => clearInterval(interval);
@@ -128,11 +142,57 @@ export const RealTimeNews: React.FC = () => {
       return `${Math.floor(minutes / 60)}h ago`;
   };
 
+  const generateFullReport = (item: NewsItem) => {
+      const impactLevel = item.virality > 80 ? "CRITICAL" : item.virality > 50 ? "HIGH" : "MODERATE";
+      const region = ["North America", "Eastern Europe", "APAC Region", "Global Internet"][Math.floor(Math.random() * 4)];
+      
+      return (
+          <div className="space-y-4 text-sm font-mono text-slate-300 leading-relaxed">
+              <div className="p-3 bg-black/40 border border-white/5 rounded-lg mb-4 grid grid-cols-2 gap-4">
+                  <div>
+                      <span className="block text-[10px] text-slate-500 uppercase">Origin Source</span>
+                      <span className="text-white font-bold">{item.source.toUpperCase()}</span>
+                  </div>
+                  <div>
+                      <span className="block text-[10px] text-slate-500 uppercase">Impact Level</span>
+                      <span className={`font-bold ${item.virality > 80 ? 'text-red-500' : 'text-primary-400'}`}>{impactLevel}</span>
+                  </div>
+                  <div>
+                      <span className="block text-[10px] text-slate-500 uppercase">Geo Vector</span>
+                      <span className="text-white">{region}</span>
+                  </div>
+                  <div>
+                      <span className="block text-[10px] text-slate-500 uppercase">Author</span>
+                      <span className="text-white">{item.author}</span>
+                  </div>
+              </div>
+
+              <h4 className="text-primary-400 font-bold uppercase tracking-wider text-xs border-b border-white/10 pb-1 mb-2">Decrypted Intercept</h4>
+              <p>
+                  <span className="text-slate-500">DATELINE {new Date(item.timestamp).toLocaleTimeString()} // </span>
+                  {item.snippet} Intelligence analysts have detected a surge in traffic originating from {item.category === 'Tech' ? 'Silicon Valley nodes' : item.category === 'Politics' ? 'DC-Metro subnet' : 'Global relay points'}. 
+                  The narrative "{item.title}" has shown a velocity increase of {item.virality}% in the last hour.
+              </p>
+              <p>
+                  Primary distribution vectors include encrypted messaging apps (Telegram/Signal) and tier-2 social platforms. 
+                  Sentiment analysis indicates a {item.virality > 50 ? 'HIGH' : 'MODERATE'} emotional payload designed to trigger {item.virality > 80 ? 'outrage' : 'curiosity'} among target demographics.
+              </p>
+
+              <h4 className="text-red-400 font-bold uppercase tracking-wider text-xs border-b border-white/10 pb-1 mb-2 mt-6">Recommended Action</h4>
+              <p className="text-slate-200">
+                  {item.status === 'Fake' ? 'Immediate containment protocols advised. Flag as disinformation and deploy counter-narrative bots.' : 
+                   item.status === 'Misleading' ? 'Issue context card and deploy community notes to clarify nuance.' : 
+                   'Monitor for mutation. No immediate interdiction required. Archive for pattern matching.'}
+              </p>
+          </div>
+      );
+  };
+
   return (
-    <div className="max-w-7xl mx-auto h-[calc(100vh-140px)] flex flex-col animate-fade-in pb-6">
+    <div className="max-w-[1600px] mx-auto h-[calc(100vh-140px)] flex flex-col animate-fade-in pb-6 relative">
       
       {/* Top Header & Ticker */}
-      <div className="mb-6 space-y-4">
+      <div className="mb-6 space-y-4 flex-shrink-0">
           <div className="flex justify-between items-end">
               <div>
                   <h1 className="text-4xl font-black text-white tracking-tighter flex items-center">
@@ -170,7 +230,15 @@ export const RealTimeNews: React.FC = () => {
                           <span className={`text-[10px] px-1 rounded ${getStatusColor(item.status)}`}>{item.status}</span>
                       </div>
                   ))}
-                  {/* Duplicate for loop illusion if needed, but simple translation works for demo */}
+                  {/* Duplicate for loop illusion */}
+                  {news.slice(0, 10).map((item, i) => (
+                      <div key={`dup-${i}`} className="flex items-center space-x-2 text-xs font-mono text-slate-300">
+                          <span className="text-red-500">>>></span>
+                          <span className="font-bold text-white uppercase">{item.category}:</span>
+                          <span>{item.title}</span>
+                          <span className={`text-[10px] px-1 rounded ${getStatusColor(item.status)}`}>{item.status}</span>
+                      </div>
+                  ))}
               </div>
           </div>
       </div>
@@ -181,7 +249,7 @@ export const RealTimeNews: React.FC = () => {
           {/* Left: Feed Controls & List */}
           <div className="col-span-12 lg:col-span-8 flex flex-col gap-4 min-h-0">
               {/* Controls */}
-              <div className="glass-panel p-2 rounded-xl border-white/10 flex items-center justify-between">
+              <div className="glass-panel p-2 rounded-xl border-white/10 flex items-center justify-between flex-shrink-0">
                   <div className="flex space-x-1 overflow-x-auto no-scrollbar">
                       {['All', ...CATEGORIES].map(cat => (
                           <button
@@ -210,42 +278,40 @@ export const RealTimeNews: React.FC = () => {
               </div>
 
               {/* Infinite Scroll List */}
-              <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+              <div className="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar pb-4">
                   {filteredNews.map((item) => (
-                      <div key={item.id} className="glass-panel p-4 rounded-xl border-white/5 hover:border-white/10 transition-all group animate-fade-in">
+                      <div 
+                        key={item.id} 
+                        onClick={() => setViewingItem(item)}
+                        className={`glass-panel p-4 rounded-xl border-white/5 transition-all group animate-fade-in cursor-pointer hover:bg-white/5 hover:border-primary-500/30 ${viewingItem?.id === item.id ? 'border-primary-500/50 bg-white/5' : ''}`}
+                      >
                           <div className="flex justify-between items-start mb-2">
                               <div className="flex items-center space-x-2">
                                   <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase ${getStatusColor(item.status)}`}>
                                       {item.status}
                                   </span>
-                                  <span className="text-xs text-slate-500 flex items-center">
+                                  <span className="text-xs text-slate-500 flex items-center font-mono">
                                       <Clock className="w-3 h-3 mr-1" /> {formatTimeAgo(item.timestamp)}
                                   </span>
                                   <span className="text-xs text-primary-400 font-bold">• {item.source}</span>
                               </div>
-                              <div className="flex items-center space-x-1 text-slate-600">
-                                  <TrendingUp className="w-3 h-3" />
-                                  <span className="text-xs font-mono">{item.virality} VR</span>
+                              <div className="flex items-center space-x-1 text-slate-600 group-hover:text-primary-400 transition-colors">
+                                  <Activity className="w-3 h-3" />
+                                  <span className="text-xs font-mono">{item.virality}% VR</span>
                               </div>
                           </div>
                           
                           <div className="flex gap-4">
                               <div className="flex-1">
-                                  <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-primary-400 transition-colors cursor-pointer">
+                                  <h3 className="text-lg font-bold text-white mb-2 leading-tight group-hover:text-primary-400 transition-colors">
                                       {item.title}
                                   </h3>
-                                  <p className="text-sm text-slate-400 line-clamp-2 leading-relaxed">
+                                  <p className="text-sm text-slate-400 line-clamp-1 leading-relaxed">
                                       {item.snippet}
                                   </p>
                               </div>
-                              {/* Action Buttons */}
-                              <div className="flex flex-col space-y-2 justify-center border-l border-white/5 pl-4 ml-2">
-                                  <button className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Quick Analyze">
-                                      <Zap className="w-4 h-4" />
-                                  </button>
-                                  <button className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors" title="Trace Source">
-                                      <Globe className="w-4 h-4" />
-                                  </button>
+                              <div className="flex items-center justify-center pl-4 border-l border-white/5">
+                                 <ChevronRight className="w-5 h-5 text-slate-600 group-hover:text-white" />
                               </div>
                           </div>
                       </div>
@@ -260,10 +326,40 @@ export const RealTimeNews: React.FC = () => {
           </div>
 
           {/* Right: Sidebar Widgets */}
-          <div className="hidden lg:col-span-4 lg:flex flex-col gap-6">
+          <div className="hidden lg:col-span-4 lg:flex flex-col gap-6 overflow-y-auto custom-scrollbar pb-4">
               
+              {/* Narrative Velocity Chart */}
+              <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40">
+                  <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-bold text-white uppercase tracking-widest flex items-center">
+                          <BarChart2 className="w-4 h-4 mr-2 text-primary-400" /> Narrative Velocity
+                      </h3>
+                      <span className="text-xs text-green-400 font-mono">+12% / hr</span>
+                  </div>
+                  <div className="h-32 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={velocityData}>
+                              <defs>
+                                  <linearGradient id="velocityGradient" x1="0" y1="0" x2="0" y2="1">
+                                      <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
+                                      <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                                  </linearGradient>
+                              </defs>
+                              <Area type="monotone" dataKey="value" stroke="#0ea5e9" strokeWidth={2} fillOpacity={1} fill="url(#velocityGradient)" />
+                              <XAxis hide />
+                              <YAxis hide domain={[0, 100]} />
+                              <Tooltip 
+                                  contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', border: '1px solid rgba(255,255,255,0.1)', fontSize: '10px' }}
+                                  itemStyle={{ color: '#fff' }}
+                                  labelStyle={{ display: 'none' }}
+                              />
+                          </AreaChart>
+                      </ResponsiveContainer>
+                  </div>
+              </div>
+
               {/* High Alert Widget */}
-              <div className="glass-panel p-6 rounded-3xl border-red-500/20 bg-red-950/10 relative overflow-hidden">
+              <div className="glass-panel p-6 rounded-3xl border-red-500/20 bg-red-950/10 relative overflow-hidden flex-shrink-0">
                   <div className="absolute top-0 right-0 p-4">
                       <AlertTriangle className="w-12 h-12 text-red-500/20" />
                   </div>
@@ -293,7 +389,7 @@ export const RealTimeNews: React.FC = () => {
               </div>
 
               {/* Trending Entities */}
-              <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40 flex-1">
+              <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40 flex-1 min-h-[200px]">
                   <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-4 flex items-center">
                       <Hash className="w-4 h-4 mr-2 text-primary-400" /> Narrative Clusters
                   </h3>
@@ -316,7 +412,7 @@ export const RealTimeNews: React.FC = () => {
               </div>
 
               {/* Source Breakdown */}
-              <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40">
+              <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40 flex-shrink-0">
                    <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-4">Source Reliability</h3>
                    <div className="space-y-4">
                        <div className="flex items-center justify-between text-xs">
@@ -348,6 +444,56 @@ export const RealTimeNews: React.FC = () => {
           </div>
 
       </div>
+
+      {/* INTELLIGENCE MODAL */}
+      {viewingItem && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+              <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setViewingItem(null)}></div>
+              <div className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-[0_0_50px_rgba(14,165,233,0.15)] overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
+                  
+                  {/* Header */}
+                  <div className="h-1 bg-gradient-to-r from-primary-500 via-purple-500 to-primary-500 w-full"></div>
+                  <div className="p-6 border-b border-white/10 flex justify-between items-start bg-white/5">
+                      <div>
+                          <div className="flex items-center space-x-3 mb-2">
+                              <span className="px-2 py-0.5 bg-primary-600/20 border border-primary-500/30 text-primary-400 text-[10px] font-bold uppercase tracking-widest rounded-sm">Confidential</span>
+                              <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">ID: INTEL-{viewingItem.id.toUpperCase()}</span>
+                          </div>
+                          <h2 className="text-xl font-bold text-white leading-tight pr-4">{viewingItem.title}</h2>
+                      </div>
+                      <button onClick={() => setViewingItem(null)} className="p-2 hover:bg-white/5 rounded-full text-slate-400 hover:text-white transition-colors">
+                          <X className="w-5 h-5" />
+                      </button>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-8 relative">
+                      {/* Detailed Content */}
+                      {generateFullReport(viewingItem)}
+                  </div>
+
+                  <div className="p-6 border-t border-white/10 bg-black/40 flex justify-between items-center gap-4">
+                      <div className="flex items-center space-x-2">
+                          <button className="p-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/5">
+                              <Share2 className="w-4 h-4" />
+                          </button>
+                          <button className="p-3 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors border border-white/5">
+                              <FileText className="w-4 h-4" />
+                          </button>
+                      </div>
+                      
+                      <div className="flex space-x-3 flex-1 justify-end">
+                           <button className="px-4 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 font-bold text-sm hover:bg-red-500/20 transition-colors flex items-center">
+                               <Lock className="w-4 h-4 mr-2" /> Block Source
+                           </button>
+                           <button className="px-4 py-2 rounded-lg bg-primary-600 text-white font-bold text-sm hover:bg-primary-500 transition-colors flex items-center shadow-lg shadow-primary-500/20">
+                               <Globe className="w-4 h-4 mr-2" /> Trace Vector
+                           </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
     </div>
   );
 };
