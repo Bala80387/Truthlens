@@ -9,6 +9,7 @@ import { Settings } from './components/Settings';
 import { SocialShield } from './components/SocialShield';
 import { ViralTracker } from './components/ViralTracker';
 import { GeoAnalysis } from './components/GeoAnalysis';
+import { RealTimeNews } from './components/RealTimeNews';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
@@ -36,6 +37,8 @@ const App: React.FC = () => {
     switch (currentView) {
       case 'dashboard':
         return <Dashboard onAnalyzeTopic={handleQuickScan} />;
+      case 'news':
+        return <RealTimeNews />;
       case 'tracker':
         return <ViralTracker />;
       case 'geo':

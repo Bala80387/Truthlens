@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'analyzer' | 'tracker' | 'geo' | 'education' | 'settings' | 'history' | 'shield';
+export type View = 'dashboard' | 'analyzer' | 'tracker' | 'geo' | 'education' | 'settings' | 'history' | 'shield' | 'news';
 
 export type Classification = 'Real' | 'Fake' | 'Misleading' | 'Satire' | 'Unverified';
 
@@ -73,10 +73,13 @@ export interface HistoryItem extends AnalysisResult {
 export interface NewsItem {
   id: string;
   title: string;
-  category: 'Politics' | 'Health' | 'Finance' | 'Crime' | 'Tech';
-  timestamp: string;
+  source: string;
+  category: 'Politics' | 'Health' | 'Finance' | 'Tech' | 'Global' | 'Cyber';
+  timestamp: number;
   virality: number;
   status: Classification;
+  snippet: string;
+  author?: string;
 }
 
 export interface QuizQuestion {

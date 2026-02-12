@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from '../types';
-import { ShieldAlert, GraduationCap, Settings, Menu, X, Activity, Clock, Share2, Crosshair, Globe } from 'lucide-react';
+import { ShieldAlert, GraduationCap, Settings, Menu, X, Activity, Clock, Share2, Crosshair, Globe, Radio } from 'lucide-react';
 
 interface NavigationProps {
   currentView: View;
@@ -13,6 +13,7 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, setView, is
   
   const navItems: { id: View; label: string; icon: React.ReactNode }[] = [
     { id: 'dashboard', label: 'Trend Watch', icon: <Activity className="w-5 h-5" /> },
+    { id: 'news', label: 'Intel Feed', icon: <Radio className="w-5 h-5" /> },
     { id: 'geo', label: 'Geo Intel', icon: <Globe className="w-5 h-5" /> },
     { id: 'tracker', label: 'Viral Tracker', icon: <Crosshair className="w-5 h-5" /> },
     { id: 'analyzer', label: 'Detection Engine', icon: <ShieldAlert className="w-5 h-5" /> },
