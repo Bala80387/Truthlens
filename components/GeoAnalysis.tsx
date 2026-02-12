@@ -198,35 +198,63 @@ export const GeoAnalysis: React.FC = () => {
                 // Skip the currently selected region (it is handled by the foreground effect)
                 if (selectedRegion && region.id === selectedRegion.id) return region;
 
-                // Randomly change threat level for background activity (20% chance)
-                if (Math.random() > 0.8) {
+                // 1. Gradual Campaign Drift (Simulates organic growth/decay)
+                if (Math.random() > 0.7) {
+                    const drift = Math.random() > 0.5 ? 1 : -1;
+                    const newCampaigns = Math.max(1, region.activeCampaigns + drift);
+                    
+                    // 2. Conditional Threat Level Shift (Reactive to campaigns)
                     const levels: ('Low' | 'Moderate' | 'High' | 'Critical')[] = ['Low', 'Moderate', 'High', 'Critical'];
-                    const currentIdx = levels.indexOf(region.threatLevel);
+                    let currentIdx = levels.indexOf(region.threatLevel);
                     
-                    // Bias towards center (Moderate/High) to keep map dynamic
-                    let move = 0;
-                    if (currentIdx === 0) move = 1; // Low -> Moderate
-                    else if (currentIdx === 3) move = -1; // Critical -> High
-                    else move = Math.random() > 0.5 ? 1 : -1;
+                    // Define thresholds for "natural" threat levels based on volume
+                    let targetIdx = currentIdx;
+                    if (newCampaigns < 8) targetIdx = 0; // Low
+                    else if (newCampaigns < 20) targetIdx = 1; // Moderate
+                    else if (newCampaigns < 35) targetIdx = 2; // High
+                    else targetIdx = 3; // Critical
+                    
+                    // Only move one step at a time towards the target to prevent jumping
+                    let newLevel = region.threatLevel;
+                    if (currentIdx !== targetIdx) {
+                        // 20% chance to correct the level to match volume (simulates lag/inertia)
+                        if (Math.random() > 0.8) {
+                            currentIdx += (targetIdx > currentIdx ? 1 : -1);
+                            newLevel = levels[currentIdx];
+                        }
+                    } else {
+                        // Rare random fluctuation even if stable (5% chance)
+                        if (Math.random() > 0.95) {
+                             const randomMove = Math.random() > 0.5 ? 1 : -1;
+                             const newIdx = Math.max(0, Math.min(3, currentIdx + randomMove));
+                             newLevel = levels[newIdx];
+                        }
+                    }
 
-                    const newIdx = Math.max(0, Math.min(3, currentIdx + move));
-                    
-                    // Also slight campaign fluctuation
-                    const campaignDrift = Math.random() > 0.5 ? 1 : -1;
+                    // 3. Narrative Evolution (Adds depth)
+                    let newNarrative = region.dominantNarrative;
+                    if (Math.random() > 0.9) {
+                        const base = region.dominantNarrative.split(' [')[0];
+                        const modifiers = ['[Emerging]', '[Complex]', '[Dormant]', '[Accelerating]', ''];
+                        const mod = modifiers[Math.floor(Math.random() * modifiers.length)];
+                        newNarrative = mod ? `${base} ${mod}` : base;
+                    }
 
                     return {
                         ...region,
-                        threatLevel: levels[newIdx],
-                        activeCampaigns: Math.max(1, region.activeCampaigns + campaignDrift)
+                        activeCampaigns: newCampaigns,
+                        threatLevel: newLevel,
+                        dominantNarrative: newNarrative
                     };
                 }
+                
                 return region;
             });
         });
-    }, 2000); // Faster background update cycle
+    }, 3000); // Slower, more deliberate pace for background
 
     return () => clearInterval(interval);
-  }, [selectedRegion?.id]); // Restart if selection changes
+  }, [selectedRegion?.id]);
 
   const toggleFilter = (type: string) => {
     if (activeFilters.includes(type)) {

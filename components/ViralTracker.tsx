@@ -149,6 +149,21 @@ export const ViralTracker: React.FC = () => {
     return null;
   };
 
+  const PsychographicsTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-black/90 p-2 rounded border border-white/10 text-xs shadow-xl backdrop-blur-md">
+          <p className="text-orange-400 mb-1 font-bold uppercase tracking-wider">{label}</p>
+          <div className="flex items-center space-x-2">
+             <div className="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+             <span className="text-white font-mono">{payload[0].value} / 100 Intensity</span>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="max-w-[1600px] mx-auto animate-fade-in pb-8 h-[calc(100vh-140px)] flex flex-col">
       
@@ -423,7 +438,7 @@ export const ViralTracker: React.FC = () => {
                                    <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
                                    <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
                                    <RechartsRadar name="Impact" dataKey="A" stroke="#f97316" strokeWidth={2} fill="#f97316" fillOpacity={0.4} />
-                                   <Tooltip content={<CustomTooltip />} />
+                                   <Tooltip content={<PsychographicsTooltip />} cursor={false} />
                                </RadarChart>
                            </ResponsiveContainer>
                            <div className="absolute bottom-0 w-full text-center">
