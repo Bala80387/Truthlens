@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText } from 'lucide-react';
 import { analyzeContent, runAutonomousInvestigation } from '../services/geminiService';
 import { AnalysisResult } from '../types';
 import { ResultsView } from './ResultsView';
@@ -23,6 +23,9 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   const [isRecording, setIsRecording] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
+  // Real-time Heuristics
+  const [metrics, setMetrics] = useState({ complexity: 0, urgency: 0, noise: 0 });
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -30,16 +33,42 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Update input text if prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (initialText) {
       setInputText(initialText);
       setActiveTab('text');
     }
   }, [initialText]);
 
+  // Heuristic Analysis Effect
+  useEffect(() => {
+    if (!inputText) {
+        setMetrics({ complexity: 0, urgency: 0, noise: 0 });
+        return;
+    }
+    const words = inputText.trim().split(/\s+/);
+    if (words.length === 0) return;
+
+    const avgLen = words.reduce((acc, w) => acc + w.length, 0) / words.length;
+    const caps = words.filter(w => w.length > 1 && w === w.toUpperCase()).length;
+    const special = (inputText.match(/[^a-zA-Z0-9\s]/g) || []).length;
+    
+    setMetrics({
+        complexity: Math.min(100, Math.max(10, avgLen * 12)), // Higher avg length = higher complexity
+        urgency: Math.min(100, (caps * 5) + (inputText.match(/!/g) || []).length * 10), // Caps and ! increase urgency
+        noise: Math.min(100, (special * 2) + (words.length < 5 ? 50 : 0)) // Special chars or very short text
+    });
+  }, [inputText]);
+
   // Simulated agent log stream
   const addLog = (log: string) => {
     setAgentLogs(prev => [...prev, log]);
+  };
+
+  const loadExample = (type: string) => {
+      if (type === 'fake') setInputText("BREAKING: Secret documents leaked from Sector 7 reveal government weather control machine caused recent storms! #WakeUp #Truth");
+      if (type === 'scam') setInputText("URGENT: Your account has been compromised. Click here immediately to verify your identity or lose access forever. http://bit.ly/secure-login-v2");
+      if (type === 'satire') setInputText("Local cat elected mayor, promises to outlaw vacuum cleaners and increase nap subsidies.");
   };
 
   const handleAnalyze = async () => {
@@ -182,14 +211,19 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   };
 
   if (result) {
-    return <ResultsView result={result} onReset={() => {
-      setResult(null);
-      setInputText('');
-      setSelectedImage(null);
-      setSelectedVideo(null);
-      setAudioBase64(null);
-      setAgentLogs([]);
-    }} />;
+    return <ResultsView 
+      result={result} 
+      onReset={() => {
+        setResult(null);
+        setInputText('');
+        setSelectedImage(null);
+        setSelectedVideo(null);
+        setAudioBase64(null);
+        setAgentLogs([]);
+      }}
+      contentType={activeTab}
+      contentSource={activeTab === 'image' ? selectedImage : activeTab === 'video' ? selectedVideo : null}
+    />;
   }
 
   return (
@@ -239,24 +273,61 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                     <Sparkles className="w-3 h-3 mr-1" />
                     AI Text Detector Active (Perplexity/Burstiness)
                  </span>
-                 <button 
-                    onClick={() => setIsDeepAgentMode(!isDeepAgentMode)}
-                    className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold transition-all border ${
-                        isDeepAgentMode 
-                        ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
-                        : 'bg-black/40 border-slate-700 text-slate-500 hover:bg-white/5'
-                    }`}
-                 >
-                    <Bot className="w-3 h-3" />
-                    <span>Deep Investigation Agent</span>
-                 </button>
+                 <div className="flex space-x-2">
+                     <button 
+                        onClick={() => setIsDeepAgentMode(!isDeepAgentMode)}
+                        className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                            isDeepAgentMode 
+                            ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
+                            : 'bg-black/40 border-slate-700 text-slate-500 hover:bg-white/5'
+                        }`}
+                     >
+                        <Bot className="w-3 h-3" />
+                        <span>Deep Investigation Agent</span>
+                     </button>
+                 </div>
               </div>
-              <textarea
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                placeholder="Paste news text, blog post, or chatGPT output here..."
-                className="w-full h-56 bg-black/40 border border-white/10 rounded-xl p-5 text-slate-200 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 resize-none transition-all placeholder-slate-600 font-mono text-sm leading-relaxed"
-              />
+              
+              <div className="relative">
+                  <textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder="Paste news text, blog post, or chatGPT output here for forensic analysis..."
+                    className="w-full h-56 bg-black/40 border border-white/10 rounded-xl p-5 text-slate-200 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 resize-none transition-all placeholder-slate-600 font-mono text-sm leading-relaxed"
+                  />
+                  {/* Real-time Heuristics HUD */}
+                  {inputText.length > 0 && (
+                      <div className="absolute bottom-4 right-4 flex space-x-4 bg-black/80 backdrop-blur-md p-2 rounded-lg border border-white/10">
+                          <div className="flex items-center space-x-2">
+                              <BarChart3 className="w-3 h-3 text-blue-400" />
+                              <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
+                                  <div className="h-full bg-blue-400 transition-all duration-300" style={{width: `${metrics.complexity}%`}}></div>
+                              </div>
+                              <span className="text-[9px] text-slate-400 font-mono">CMPLX</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <Zap className="w-3 h-3 text-yellow-400" />
+                              <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
+                                  <div className={`h-full transition-all duration-300 ${metrics.urgency > 50 ? 'bg-red-500' : 'bg-yellow-400'}`} style={{width: `${metrics.urgency}%`}}></div>
+                              </div>
+                              <span className="text-[9px] text-slate-400 font-mono">URGENCY</span>
+                          </div>
+                      </div>
+                  )}
+              </div>
+
+              {/* Quick Loaders */}
+              <div className="flex justify-between items-center pt-2">
+                  <div className="flex space-x-2">
+                      <span className="text-[10px] text-slate-500 font-bold uppercase py-1.5">Quick Load:</span>
+                      <button onClick={() => loadExample('fake')} className="text-[10px] px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded text-slate-300 border border-white/5 transition-colors">Data Leak</button>
+                      <button onClick={() => loadExample('scam')} className="text-[10px] px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded text-slate-300 border border-white/5 transition-colors">Phishing</button>
+                      <button onClick={() => loadExample('satire')} className="text-[10px] px-2 py-1.5 bg-white/5 hover:bg-white/10 rounded text-slate-300 border border-white/5 transition-colors">Satire</button>
+                  </div>
+                  <div className="text-[10px] text-slate-600 font-mono">
+                      {inputText.length} chars
+                  </div>
+              </div>
             </div>
           )}
 
@@ -290,6 +361,11 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                     />
                  </div>
               </div>
+              <div className="flex justify-center">
+                  <p className="text-xs text-slate-500 max-w-md text-center">
+                      Engine will parse DOM structure, verify SSL certificates, and cross-reference domain age with known misinformation registries.
+                  </p>
+              </div>
             </div>
           )}
 
@@ -302,7 +378,10 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                 onClick={isRecording ? stopRecording : startRecording}
                 >
                     {isRecording && (
-                        <div className="absolute inset-0 rounded-full border-4 border-red-500/50 animate-ping"></div>
+                        <>
+                            <div className="absolute inset-0 rounded-full border-4 border-red-500/50 animate-ping"></div>
+                            <div className="absolute inset-0 rounded-full border-2 border-red-500/30 animate-pulse delay-75"></div>
+                        </>
                     )}
                     {isRecording ? <MicOff className="w-12 h-12 text-red-500" /> : <Mic className="w-12 h-12 text-slate-400 group-hover:text-white" />}
                 </div>
@@ -310,7 +389,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                 <div className="text-center">
                     <h3 className="text-xl font-bold text-white mb-2">{isRecording ? "Listening..." : "Tap to Record"}</h3>
                     <p className="text-sm text-slate-400">
-                        {isRecording ? "Analyzing prosody and artifacts..." : "Analyze voice for synthetic TTS or cloned audio."}
+                        {isRecording ? "Analyzing prosody, breathing patterns, and digital artifacts..." : "Analyze voice for synthetic TTS or cloned audio."}
                     </p>
                 </div>
 
@@ -327,14 +406,22 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
             <div className="space-y-4 flex-1 animate-fade-in">
               <div 
                 onClick={() => activeTab === 'image' ? fileInputRef.current?.click() : videoInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-2xl h-64 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ${
+                className={`border-2 border-dashed rounded-2xl h-64 flex flex-col items-center justify-center cursor-pointer transition-all duration-300 relative overflow-hidden group ${
                   (selectedImage || selectedVideo)
                     ? 'border-primary-500/50 bg-black/60' 
                     : 'border-slate-800 hover:border-slate-600 bg-black/40 hover:bg-black/60'
                 }`}
               >
+                {/* Simulated Scanning Grid on Hover */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(14,165,233,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(14,165,233,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                
                 {selectedImage ? (
-                   <img src={selectedImage} alt="Preview" className="h-full w-full object-contain rounded-xl p-2" />
+                   <div className="relative h-full w-full p-2">
+                       <img src={selectedImage} alt="Preview" className="h-full w-full object-contain rounded-xl relative z-10" />
+                       <div className="absolute top-4 right-4 bg-black/60 backdrop-blur px-2 py-1 rounded border border-white/10 text-[10px] text-green-400 font-mono flex items-center">
+                           <ShieldCheck className="w-3 h-3 mr-1" /> Ready
+                       </div>
+                   </div>
                 ) : selectedVideo ? (
                     <video 
                         ref={videoRef}
@@ -345,11 +432,11 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                     />
                 ) : (
                   <>
-                    <div className="w-16 h-16 rounded-full bg-slate-900/80 flex items-center justify-center mb-4 border border-white/5">
-                        {activeTab === 'image' ? <ImageIcon className="w-6 h-6 text-slate-400" /> : <Video className="w-6 h-6 text-slate-400" />}
+                    <div className="w-16 h-16 rounded-full bg-slate-900/80 flex items-center justify-center mb-4 border border-white/5 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)]">
+                        {activeTab === 'image' ? <ImageIcon className="w-6 h-6 text-slate-400 group-hover:text-primary-400" /> : <Video className="w-6 h-6 text-slate-400 group-hover:text-primary-400" />}
                     </div>
                     <p className="text-slate-300 font-medium text-lg">Upload {activeTab === 'image' ? 'Image' : 'Video'}</p>
-                    <p className="text-xs text-slate-500 mt-2">Max 10MB - Forensics Analysis</p>
+                    <p className="text-xs text-slate-500 mt-2">Max 10MB - GAN/Diffusion Forensics</p>
                   </>
                 )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
@@ -360,7 +447,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
 
           <div className="mt-8 flex flex-col items-end space-y-4">
             {isDeepAgentMode && isAnalyzing && (
-                <div className="w-full bg-black/80 rounded-xl p-4 font-mono text-xs border border-green-500/20 text-green-400 h-32 overflow-y-auto shadow-inner">
+                <div className="w-full bg-black/80 rounded-xl p-4 font-mono text-xs border border-green-500/20 text-green-400 h-32 overflow-y-auto shadow-inner custom-scrollbar">
                     <div className="flex items-center space-x-2 mb-2 border-b border-green-500/20 pb-1">
                         <Terminal className="w-3 h-3" />
                         <span>AGENT_ACTIVITY_LOG</span>

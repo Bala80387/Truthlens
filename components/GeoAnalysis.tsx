@@ -69,6 +69,8 @@ interface ReportDetail {
   summary: string;
   keyFindings: string[];
   indicators: string[];
+  tactics: string[];
+  activityLog: string[];
 }
 
 interface ActorProfile {
@@ -340,6 +342,18 @@ export const GeoAnalysis: React.FC = () => {
               "IP: 192.168.104.22 (Malicious Node)",
               "Hash: 5d41402abc4b2a76b9719d911017c592",
               "Domain: secure-verify-login-update.com"
+          ],
+          tactics: [
+            "Spearphishing campaigns targeting regional administrators",
+            "DNS tunneling for C2 communications",
+            "Living-off-the-land binaries (LOLBins) for persistence",
+            "Typosquatting of government domains"
+          ],
+          activityLog: [
+            "0800: Initial beacon detected from Sector 4",
+            "0915: Data exfiltration attempt blocked by firewall",
+            "1230: Lateral movement to backup server observed",
+            "1445: Threat actor session terminated"
           ]
       };
       
@@ -855,7 +869,7 @@ export const GeoAnalysis: React.FC = () => {
                               {viewingActor.relatedReports.map((rep, i) => (
                                   <div key={i} className="flex items-center justify-between p-3 bg-black/40 rounded-lg border border-white/5 hover:border-white/10 transition-colors cursor-pointer group">
                                       <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{rep.title}</span>
-                                      <span className="text-[10px] text-slate-600 font-mono">{rep.date}</span>
+                                      <span className="text-xs text-slate-600 font-mono">{rep.date}</span>
                                   </div>
                               ))}
                           </div>
@@ -867,7 +881,7 @@ export const GeoAnalysis: React.FC = () => {
 
       {/* Report Modal */}
       {viewingReport && (
-          <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setViewingReport(null)}></div>
               <div className="relative w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in flex flex-col max-h-[90vh]">
                   
@@ -935,6 +949,32 @@ export const GeoAnalysis: React.FC = () => {
                                   </li>
                               ))}
                           </ul>
+                      </div>
+
+                      {/* Tactics & Procedures */}
+                      <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                              <Sword className="w-4 h-4 mr-2" /> Tactics & Procedures
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                                {viewingReport.tactics.map((tactic, i) => (
+                                    <span key={i} className="px-2 py-1 bg-white/5 border border-white/10 rounded text-xs text-slate-300">
+                                        {tactic}
+                                    </span>
+                                ))}
+                          </div>
+                      </div>
+
+                      {/* Activity Log */}
+                      <div className="space-y-3">
+                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                              <Activity className="w-4 h-4 mr-2" /> Activity Log
+                          </h4>
+                          <div className="bg-black/40 border border-white/5 rounded-lg p-3 font-mono text-xs text-slate-400 space-y-1">
+                                {viewingReport.activityLog.map((log, i) => (
+                                    <div key={i}>{log}</div>
+                                ))}
+                          </div>
                       </div>
 
                       {/* IOCs */}

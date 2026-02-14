@@ -162,6 +162,7 @@ export const ViralTracker: React.FC = () => {
   };
 
   const handleCounterMeasure = (type: string) => {
+      console.log(`[Simulation] Counter-measure triggered: ${type} against target ${selectedTrend?.id}`);
       setActionStatus('deploying');
       setResponseLog(prev => [...prev, `> Initializing ${type} protocol...`]);
       
@@ -373,6 +374,13 @@ export const ViralTracker: React.FC = () => {
                                </div>
                            </div>
                        </div>
+
+                       <button
+                           onClick={() => handleCounterMeasure('Truth Vector')}
+                           className="w-full py-2 mt-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg text-xs font-bold text-blue-400 uppercase tracking-wider transition-all flex items-center justify-center group/btn"
+                       >
+                           <MessageSquare className="w-3 h-3 mr-2 group-hover/btn:scale-110 transition-transform" /> Deploy Truth Vector
+                       </button>
                    </div>
 
                    {/* Digital Territory (Heatmap) */}

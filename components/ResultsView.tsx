@@ -7,6 +7,8 @@ import { generateAudioReport } from '../services/geminiService';
 interface ResultsViewProps {
   result: AnalysisResult;
   onReset: () => void;
+  contentType: 'text' | 'image' | 'url' | 'video' | 'audio';
+  contentSource?: string | null;
 }
 
 // Helper to decode Base64 string to Uint8Array
@@ -36,12 +38,13 @@ function pcmToAudioBuffer(data: Uint8Array, ctx: AudioContext, sampleRate: numbe
   return buffer;
 }
 
-export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => {
+export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, contentType, contentSource }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showTechDetails, setShowTechDetails] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('English');
   const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('female');
+  const [heatmapEnabled, setHeatmapEnabled] = useState(true);
   
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -392,9 +395,68 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset }) => 
                  </div>
               </div>
 
+              {/* Visual Forensics for Image/Video */}
+              {(contentType === 'image' || contentType === 'video') && contentSource && (
+                <div className="mt-6 border-t border-white/5 pt-6 animate-fade-in">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center space-x-2">
+                            <ScanFace className="w-5 h-5 text-red-400" />
+                            <h4 className="text-sm font-bold text-white uppercase tracking-wider">Visual Forensics Map</h4>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <span className="text-xs text-slate-500 mr-2">Artifact Density: {result.technicalMetrics?.vitVisualArtifacts || 0}%</span>
+                            <button 
+                                onClick={() => setHeatmapEnabled(!heatmapEnabled)}
+                                className={`px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                                    heatmapEnabled 
+                                    ? 'bg-red-500/20 text-red-400 border-red-500/30' 
+                                    : 'bg-white/5 text-slate-400 border-white/10'
+                                }`}
+                            >
+                                {heatmapEnabled ? 'Heatmap ON' : 'Heatmap OFF'}
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div className="relative w-full rounded-xl overflow-hidden border border-white/10 bg-black/50 aspect-video flex items-center justify-center group">
+                        {contentType === 'image' ? (
+                            <img src={contentSource} alt="Analysis Target" className="max-h-full max-w-full object-contain" />
+                        ) : (
+                            <video src={contentSource} controls className="max-h-full max-w-full" />
+                        )}
+                        
+                        {heatmapEnabled && (
+                            <div 
+                                className="absolute inset-0 pointer-events-none transition-opacity duration-500"
+                                style={{
+                                    background: (result.technicalMetrics?.vitVisualArtifacts || 0) > 40 
+                                        ? `radial-gradient(circle at 40% 30%, rgba(239, 68, 68, 0.4) 0%, transparent 25%), 
+                                           radial-gradient(circle at 70% 60%, rgba(239, 68, 68, 0.3) 0%, transparent 30%)` 
+                                        : `repeating-linear-gradient(0deg, transparent, transparent 19px, rgba(34, 197, 94, 0.1) 20px),
+                                           linear-gradient(90deg, transparent 0%, rgba(34, 197, 94, 0.05) 50%, transparent 100%)`,
+                                    mixBlendMode: (result.technicalMetrics?.vitVisualArtifacts || 0) > 40 ? 'color-dodge' : 'normal',
+                                    animation: (result.technicalMetrics?.vitVisualArtifacts || 0) <= 40 ? 'scan 2s linear infinite' : 'pulse 3s infinite'
+                                }}
+                            >
+                                {(result.technicalMetrics?.vitVisualArtifacts || 0) > 40 && (
+                                    <div className="absolute top-4 right-4 bg-red-500/20 border border-red-500/50 text-red-400 px-2 py-1 text-[10px] font-bold rounded uppercase animate-pulse">
+                                        Artifacts Detected
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-2">
+                        {(result.technicalMetrics?.vitVisualArtifacts || 0) > 40 
+                            ? "Heatmap highlights regions with high probability of GAN/Diffusion generation artifacts (warping, asymmetry)."
+                            : "No significant visual anomalies detected. Grid scan active."}
+                    </p>
+                </div>
+              )}
+
               {/* Detailed Metrics Section - Now includes Perplexity/Burstiness */}
               {showTechDetails && (
-                <div className="animate-fade-in space-y-6">
+                <div className="animate-fade-in space-y-6 mt-6 pt-6 border-t border-white/5">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {/* Perplexity / Text Complexity */}
                         <div className="bg-black/40 p-4 rounded-xl border border-white/5">
