@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Heart, MessageCircle, Share2, ShieldAlert, CheckCircle, AlertTriangle, Send, X, MoreHorizontal, Shield, Lock, Eye, ScanLine, Zap, Activity, Search, Brain, Fingerprint, ScanEye, Wand2, Terminal, AlertOctagon, Network } from 'lucide-react';
+import { User, Heart, MessageCircle, Share2, ShieldAlert, CheckCircle, AlertTriangle, Send, X, MoreHorizontal, Shield, Lock, Eye, ScanLine, Zap, Activity, Search, Brain, Fingerprint, ScanEye, Wand2, Terminal, AlertOctagon, Network, Globe } from 'lucide-react';
 import { analyzeContent } from '../services/geminiService';
 import { AnalysisResult } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -80,6 +80,23 @@ export const SocialShield: React.FC = () => {
 
   // Real-time Draft Safety Score
   const [safetyScore, setSafetyScore] = useState(100);
+
+  // Simulation Nodes for Graph
+  const [simNodes, setSimNodes] = useState<{x: number, y: number, active: boolean, delay: number}[]>([]);
+
+  // Init Simulation Grid
+  useEffect(() => {
+      const nodes = [];
+      for(let i=0; i<30; i++) {
+          nodes.push({
+              x: Math.random() * 100,
+              y: Math.random() * 100,
+              active: false,
+              delay: Math.random() * 2000
+          });
+      }
+      setSimNodes(nodes);
+  }, []);
 
   // Simulate typing analysis & Narrative DNA updates
   useEffect(() => {
@@ -529,15 +546,52 @@ export const SocialShield: React.FC = () => {
                 </div>
             </div>
 
-            {/* AI Guardian Info */}
-            <div className="glass-panel p-6 rounded-2xl border-white/5 bg-blue-900/10">
-                <div className="flex items-center space-x-2 mb-2 text-blue-400">
-                    <Brain className="w-5 h-5" />
-                    <h3 className="font-bold text-sm">AI Guardian Active</h3>
+            {/* Viral Propagation Simulator (Enhanced AI Guardian) */}
+            <div className="glass-panel p-6 rounded-2xl border-white/5 bg-black overflow-hidden relative group">
+                <div className={`absolute inset-0 opacity-20 pointer-events-none transition-colors duration-1000 ${safetyScore < 60 ? 'bg-red-900' : 'bg-blue-900'}`}></div>
+                <div className="flex items-center space-x-2 mb-3 relative z-10">
+                    <Globe className={`w-5 h-5 ${safetyScore < 60 ? 'text-red-400' : 'text-blue-400'}`} />
+                    <h3 className="font-bold text-white text-sm">Viral Simulator</h3>
                 </div>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                    Local heuristics engine monitoring for viral anomalies and disinformation patterns.
-                </p>
+                <p className="text-xs text-slate-400 mb-3 relative z-10">Predicted propagation across network.</p>
+                
+                <div className="h-40 w-full bg-black/50 rounded-lg border border-white/10 relative overflow-hidden">
+                    <svg className="w-full h-full">
+                        {simNodes.map((node, i) => (
+                            <circle 
+                                key={i} 
+                                cx={`${node.x}%`} 
+                                cy={`${node.y}%`} 
+                                r={isScanning ? (safetyScore < 60 ? 3 : 2) : 1}
+                                fill={isScanning && safetyScore < 60 ? '#ef4444' : isScanning ? '#3b82f6' : '#475569'}
+                                opacity={isScanning ? 0.8 : 0.3}
+                                className="transition-all duration-500"
+                            >
+                                {isScanning && (
+                                    <animate 
+                                        attributeName="r" 
+                                        values={safetyScore < 60 ? "3;6;3" : "2;4;2"} 
+                                        dur={`${1 + Math.random()}s`} 
+                                        repeatCount="indefinite" 
+                                    />
+                                )}
+                            </circle>
+                        ))}
+                    </svg>
+                    {isScanning && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                            <span className={`text-2xl font-black ${safetyScore < 60 ? 'text-red-500' : 'text-blue-500'} opacity-50`}>
+                                {safetyScore < 60 ? 'VIRAL' : 'SAFE'}
+                            </span>
+                        </div>
+                    )}
+                </div>
+                <div className="flex justify-between items-center mt-3 text-[10px] font-mono relative z-10">
+                    <span className="text-slate-500">REACH EST.</span>
+                    <span className={`font-bold ${safetyScore < 60 ? 'text-red-400' : 'text-green-400'}`}>
+                        {safetyScore < 60 ? '2.4M (HIGH)' : '15k (LOW)'}
+                    </span>
+                </div>
             </div>
         </div>
       </div>
