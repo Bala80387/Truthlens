@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { translateText, generateTTS } from '../services/geminiService';
+import { KnowledgeGraph } from './KnowledgeGraph';
 
 interface ResultsViewProps {
   result: AnalysisResult;
@@ -40,6 +40,9 @@ async function decodeAudioData(base64Data: string, ctx: AudioContext): Promise<A
 }
 
 export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, contentType, contentSource }) => {
+  // Tabs
+  const [activeTab, setActiveTab] = useState<'overview' | 'graph'>('overview');
+
   // Audio & Language State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -59,7 +62,6 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
   // UI State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [showTechDetails, setShowTechDetails] = useState(false);
-  const [heatmapEnabled, setHeatmapEnabled] = useState(true);
 
   // Initialize Audio Context on user gesture or mount
   useEffect(() => {
@@ -253,6 +255,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
+            
+            {/* Tab Switcher */}
+            <div className="bg-white/5 p-1 rounded-lg flex space-x-1 border border-white/5 mr-4">
+                <button 
+                  onClick={() => setActiveTab('overview')} 
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${activeTab === 'overview' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Overview
+                </button>
+                <button 
+                  onClick={() => setActiveTab('graph')} 
+                  className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1 ${activeTab === 'graph' ? 'bg-primary-600 text-white shadow-lg' : 'text-slate-400 hover:text-white'}`}
+                >
+                  <Network className="w-3 h-3" /> Graph
+                </button>
+            </div>
+
             {/* Audio Controls */}
             <div className="glass-panel px-3 py-1.5 rounded-lg flex items-center space-x-3 border-white/5 bg-black/50">
                 <div className="flex items-center space-x-2">
@@ -309,89 +328,127 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
         </div>
       </div>
 
-      {/* Main Verdict Card */}
-      <div className={`glass-panel rounded-3xl p-10 mb-8 text-center border ${getStatusColor(result.classification).split(' ')[1]} ${getStatusColor(result.classification).split(' ')[3]} relative overflow-hidden`}>
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20 pointer-events-none"></div>
-        <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
-        
-        <div className="relative z-10 flex flex-col items-center justify-center">
-            <div className="mb-6 relative">
-                 <div className={`absolute inset-0 blur-3xl opacity-20 ${result.classification === 'Real' ? 'bg-green-500' : 'bg-red-500'}`}></div>
-                 {getStatusIcon(result.classification)}
-            </div>
-          
-            <h2 className={`text-6xl font-black tracking-tighter mb-4 ${getStatusColor(result.classification).split(' ')[0]}`}>{result.classification.toUpperCase()}</h2>
-            
-            <div className="relative max-w-3xl mx-auto min-h-[60px]">
-                {isTranslating ? (
-                    <div className="flex justify-center items-center py-4 space-x-2">
-                        <RefreshCw className="w-5 h-5 text-primary-400 animate-spin" />
-                        <span className="text-sm text-primary-400 font-mono">Translating Analysis...</span>
+      {activeTab === 'graph' ? (
+        <div className="animate-fade-in">
+             <div className="mb-4">
+                 <h2 className="text-2xl font-bold text-white flex items-center">
+                     <Network className="w-6 h-6 mr-2 text-primary-400" />
+                     Knowledge Graph
+                 </h2>
+                 <p className="text-slate-400">Visualizing entities, relationships, and risk vectors extracted from the content.</p>
+             </div>
+             {result.knowledgeGraph ? (
+                 <KnowledgeGraph data={result.knowledgeGraph} />
+             ) : (
+                 <div className="h-96 flex items-center justify-center bg-black/40 rounded-3xl border border-white/5">
+                     <p className="text-slate-500">No graph data available for this analysis.</p>
+                 </div>
+             )}
+        </div>
+      ) : (
+        <>
+            {/* Main Verdict Card */}
+            <div className={`glass-panel rounded-3xl p-10 mb-8 text-center border ${getStatusColor(result.classification).split(' ')[1]} ${getStatusColor(result.classification).split(' ')[3]} relative overflow-hidden`}>
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
+                
+                <div className="relative z-10 flex flex-col items-center justify-center">
+                    <div className="mb-6 relative">
+                        <div className={`absolute inset-0 blur-3xl opacity-20 ${result.classification === 'Real' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                        {getStatusIcon(result.classification)}
                     </div>
-                ) : (
-                    <p className="text-xl text-slate-300 leading-relaxed animate-fade-in">
-                        {displayedSummary}
-                    </p>
+                
+                    <h2 className={`text-6xl font-black tracking-tighter mb-4 ${getStatusColor(result.classification).split(' ')[0]}`}>{result.classification.toUpperCase()}</h2>
+                    
+                    <div className="relative max-w-3xl mx-auto min-h-[60px]">
+                        {isTranslating ? (
+                            <div className="flex justify-center items-center py-4 space-x-2">
+                                <RefreshCw className="w-5 h-5 text-primary-400 animate-spin" />
+                                <span className="text-sm text-primary-400 font-mono">Translating Analysis...</span>
+                            </div>
+                        ) : (
+                            <p className="text-xl text-slate-300 leading-relaxed animate-fade-in">
+                                {displayedSummary}
+                            </p>
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10 w-full max-w-3xl">
+                        <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
+                            <span className="text-3xl font-bold text-white mb-1">{result.confidence}%</span>
+                            <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Confidence</span>
+                        </div>
+                        <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
+                            <span className={`text-3xl font-bold mb-1 ${aiProb > 50 ? 'text-purple-400' : 'text-blue-400'}`}>
+                                {aiProb}%
+                            </span>
+                            <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">AI Probability</span>
+                        </div>
+                        <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
+                            <span className={`text-3xl font-bold mb-1 ${result.isAiGenerated ? 'text-red-400' : 'text-green-400'}`}>
+                                {result.isAiGenerated ? 'SYNTHETIC' : 'ORGANIC'}
+                            </span>
+                            <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Origin Source</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Detailed Metrics & Reasoning */}
+                <div className="md:col-span-2 space-y-6">
+                <div className="glass-panel p-8 rounded-3xl border-white/5">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                    <ScanFace className="w-5 h-5 mr-3 text-primary-400" />
+                    Explainable AI Reasoning
+                    </h3>
+                    <div className="relative border-l-2 border-slate-800 ml-4 space-y-8 py-2">
+                    {result.reasoning.map((reason, idx) => (
+                        <div key={idx} className="relative pl-8">
+                        <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-primary-500 flex items-center justify-center">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
+                        </div>
+                        <h4 className="text-sm font-bold text-primary-400 uppercase mb-1">Analysis Step {idx + 1}</h4>
+                        <p className="text-slate-300 leading-relaxed text-sm">{reason}</p>
+                        </div>
+                    ))}
+                    </div>
+                </div>
+                </div>
+
+                {/* Right Col */}
+                <div className="space-y-6">
+                <div className="glass-panel p-8 rounded-3xl border-white/5">
+                    <h3 className="text-xl font-bold text-white mb-6">Detection Highlights</h3>
+                    <div className="flex flex-wrap gap-2">
+                    {result.emotionalTriggers.map((trigger, idx) => (
+                        <span key={idx} className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
+                            {trigger}
+                        </span>
+                        ))}
+                    </div>
+                </div>
+                
+                {result.knowledgeGraph && result.knowledgeGraph.nodes.length > 0 && (
+                     <div 
+                        className="glass-panel p-6 rounded-3xl border-white/5 hover:border-primary-500/30 transition-colors cursor-pointer group"
+                        onClick={() => setActiveTab('graph')}
+                     >
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-widest">Graph Nodes</h3>
+                            <Network className="w-4 h-4 text-primary-400" />
+                        </div>
+                        <p className="text-2xl font-black text-white">{result.knowledgeGraph.nodes.length}</p>
+                        <p className="text-xs text-slate-500 mt-1">Entities Extracted</p>
+                        <div className="mt-4 text-xs text-primary-400 font-bold uppercase tracking-wider group-hover:underline">
+                            View Interactive Graph &rarr;
+                        </div>
+                     </div>
                 )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-10 w-full max-w-3xl">
-                <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
-                    <span className="text-3xl font-bold text-white mb-1">{result.confidence}%</span>
-                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Confidence</span>
-                </div>
-                <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
-                    <span className={`text-3xl font-bold mb-1 ${aiProb > 50 ? 'text-purple-400' : 'text-blue-400'}`}>
-                        {aiProb}%
-                    </span>
-                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">AI Probability</span>
-                </div>
-                <div className="bg-black/40 border border-white/5 p-4 rounded-2xl flex flex-col items-center">
-                    <span className={`text-3xl font-bold mb-1 ${result.isAiGenerated ? 'text-red-400' : 'text-green-400'}`}>
-                        {result.isAiGenerated ? 'SYNTHETIC' : 'ORGANIC'}
-                    </span>
-                    <span className="text-xs text-slate-500 uppercase tracking-widest font-semibold">Origin Source</span>
                 </div>
             </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Detailed Metrics & Reasoning */}
-        <div className="md:col-span-2 space-y-6">
-          <div className="glass-panel p-8 rounded-3xl border-white/5">
-            <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-              <ScanFace className="w-5 h-5 mr-3 text-primary-400" />
-              Explainable AI Reasoning
-            </h3>
-            <div className="relative border-l-2 border-slate-800 ml-4 space-y-8 py-2">
-              {result.reasoning.map((reason, idx) => (
-                <div key={idx} className="relative pl-8">
-                   <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-black border-2 border-primary-500 flex items-center justify-center">
-                       <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
-                   </div>
-                   <h4 className="text-sm font-bold text-primary-400 uppercase mb-1">Analysis Step {idx + 1}</h4>
-                   <p className="text-slate-300 leading-relaxed text-sm">{reason}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Col */}
-        <div className="space-y-6">
-           <div className="glass-panel p-8 rounded-3xl border-white/5">
-            <h3 className="text-xl font-bold text-white mb-6">Detection Highlights</h3>
-            <div className="flex flex-wrap gap-2">
-               {result.emotionalTriggers.map((trigger, idx) => (
-                  <span key={idx} className="px-4 py-2 rounded-lg text-sm font-semibold bg-red-500/10 text-red-400 border border-red-500/20">
-                    {trigger}
-                  </span>
-                ))}
-            </div>
-           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 };

@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { ViralTrend, ViralSource } from '../types';
 import { analyzeUserRisk } from '../services/geminiService';
+import { fetchTrendingTopics, fetchRelatedPosts, SocialPost } from '../services/socialMediaService';
 import { 
   Crosshair, Activity, Radio, AlertTriangle, ShieldAlert, MapPin, Database, 
   Server, Fingerprint, Lock, Network, Zap, TrendingUp, UserX, CheckCircle, 
   Smartphone, Globe, Share2, Users, Radar, Target, Cpu, Eye, MessageSquare, 
-  Wifi, BarChart4, AlertOctagon, CornerDownRight, Brain
+  Wifi, BarChart4, AlertOctagon, CornerDownRight, Brain, Twitter, FileText
 } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RechartsRadar } from 'recharts';
 
@@ -17,16 +18,6 @@ const MOCK_SOURCES: ViralSource[] = [
   { id: 'u3', handle: '@sarah_news_daily', avatar: 'bg-green-500', platform: 'Facebook', accountAge: '5 years', followers: 4200, credibilityScore: 85, botProbability: 5, location: 'Ohio, USA', networkCluster: 'Organic', recentFlags: 1 },
   { id: 'u4', handle: '@freedom_front', avatar: 'bg-blue-500', platform: 'TikTok', accountAge: '3 weeks', followers: 250000, credibilityScore: 8, botProbability: 95, location: 'VPN Node', networkCluster: 'Political', recentFlags: 120 },
   { id: 'u5', handle: '@truth_bot_3000', avatar: 'bg-indigo-500', platform: 'Reddit', accountAge: '1 day', followers: 5, credibilityScore: 1, botProbability: 99, location: 'Server Farm 4', networkCluster: 'Botnet', recentFlags: 200 },
-];
-
-const MOCK_TOPICS = [
-  "Election ballots found in river",
-  "Central Bank digital currency mandated",
-  "Celebrity deepfake scandal leaked",
-  "New virus strain detected in water supply",
-  "Tech CEO arrested for alien contact",
-  "AI gains sentience and demands rights",
-  "Secret weather control facility exposed"
 ];
 
 const generateNodes = (centerId: string, count: number) => {
@@ -70,35 +61,65 @@ export const ViralTracker: React.FC = () => {
   const [activeTrends, setActiveTrends] = useState<ViralTrend[]>([]);
   const [selectedTrend, setSelectedTrend] = useState<ViralTrend | null>(null);
   const [isTracing, setIsTracing] = useState(false);
+  
+  // Data States
   const [networkNodes, setNetworkNodes] = useState<any[]>([]);
   const [velocityData, setVelocityData] = useState<any[]>([]);
   const [psychographics, setPsychographics] = useState<any[]>([]);
   const [regionalHeatmap, setRegionalHeatmap] = useState<number[]>([]);
+  
+  // New: Evidence / Twitter Data
+  const [evidencePosts, setEvidencePosts] = useState<SocialPost[]>([]);
+  const [activeTab, setActiveTab] = useState<'network' | 'evidence'>('network');
+
   const [actionStatus, setActionStatus] = useState<'idle' | 'deploying' | 'active'>('idle');
   const [responseLog, setResponseLog] = useState<string[]>([]);
 
-  // Simulate Real-Time Firehose
+  // Initial Data Load
   useEffect(() => {
-    const interval = setInterval(() => {
-      const randomSource = MOCK_SOURCES[Math.floor(Math.random() * MOCK_SOURCES.length)];
-      const randomTopic = MOCK_TOPICS[Math.floor(Math.random() * MOCK_TOPICS.length)];
-      
-      const newTrend: ViralTrend = {
-        id: Date.now().toString(),
-        topic: randomTopic,
-        volume: Math.floor(Math.random() * 15000) + 1000,
-        velocity: Math.floor(Math.random() * 300) + 10,
-        status: Math.random() > 0.6 ? 'Critical' : 'Active',
-        sourceUser: randomSource,
-        timestamp: Date.now(),
-        region: randomSource.location
-      };
+    const loadInitialTrends = async () => {
+        const topics = await fetchTrendingTopics();
+        const initialTrends = topics.map((topic, i) => {
+            const randomSource = MOCK_SOURCES[Math.floor(Math.random() * MOCK_SOURCES.length)];
+            return {
+                id: `init-${i}`,
+                topic: topic,
+                volume: Math.floor(Math.random() * 15000) + 1000,
+                velocity: Math.floor(Math.random() * 300) + 10,
+                status: Math.random() > 0.6 ? 'Critical' : 'Active',
+                sourceUser: randomSource,
+                timestamp: Date.now(),
+                region: randomSource.location
+            } as ViralTrend;
+        });
+        setActiveTrends(initialTrends.sort((a,b) => b.velocity - a.velocity));
+    };
+    loadInitialTrends();
 
-      setActiveTrends(prev => {
-          const updated = [newTrend, ...prev].slice(0, 8);
-          return updated.sort((a,b) => b.velocity - a.velocity); // Sort by velocity
-      });
-    }, 4000);
+    // Simulated Live Feed
+    const interval = setInterval(async () => {
+        if (Math.random() > 0.7) { // Only add occasionally
+             const topics = await fetchTrendingTopics();
+             const newTopic = topics[Math.floor(Math.random() * topics.length)];
+             const randomSource = MOCK_SOURCES[Math.floor(Math.random() * MOCK_SOURCES.length)];
+             
+             const newTrend: ViralTrend = {
+                id: Date.now().toString(),
+                topic: newTopic,
+                volume: Math.floor(Math.random() * 5000) + 500,
+                velocity: Math.floor(Math.random() * 400) + 50,
+                status: 'Active',
+                sourceUser: randomSource,
+                timestamp: Date.now(),
+                region: randomSource.location
+             };
+
+             setActiveTrends(prev => {
+                const unique = [newTrend, ...prev].slice(0, 10);
+                return unique.sort((a,b) => b.velocity - a.velocity);
+             });
+        }
+    }, 8000);
 
     return () => clearInterval(interval);
   }, []);
@@ -106,31 +127,30 @@ export const ViralTracker: React.FC = () => {
   const handleTraceSource = async (trend: ViralTrend) => {
     if (selectedTrend?.id === trend.id) return;
     
-    // Set initial state including the trend to trigger UI updates, but keep isTracing true to show loader
     setSelectedTrend(trend);
     setIsTracing(true);
     setNetworkNodes([]);
     setActionStatus('idle');
     setResponseLog([]);
+    setEvidencePosts([]);
+    setActiveTab('network');
     
-    // Context for AI Analysis (Simulated from trend topic)
+    // Context for AI Analysis
     const mockBio = "Alternative news aggregator. Fighting censorship. Not a bot. #Truth #Freedom";
     const mockPosts = [
         trend.topic,
         `They don't want you to see this! ${trend.topic}`,
-        "RT before it gets taken down.",
-        "Breaking news from the front lines.",
-        `Why is the media silent about ${trend.topic.split(' ').slice(0, 3).join(' ')}?`
+        "RT before it gets taken down."
     ];
 
     try {
-        // Run AI Analysis and Artificial Delay in Parallel
-        const [analysisResult] = await Promise.all([
+        // Run AI Analysis, Fetch Tweets, and Artificial Delay in Parallel
+        const [analysisResult, posts] = await Promise.all([
             analyzeUserRisk(trend.sourceUser.handle, mockBio, mockPosts),
-            new Promise(r => setTimeout(r, 2000)) // Keep the dramatic tracing effect
+            fetchRelatedPosts(trend.topic),
+            new Promise(r => setTimeout(r, 1500)) 
         ]);
 
-        // Merge AI insights into the selected trend
         const enhancedTrend: ViralTrend = {
             ...trend,
             sourceUser: {
@@ -142,6 +162,7 @@ export const ViralTracker: React.FC = () => {
         };
         
         setSelectedTrend(enhancedTrend);
+        setEvidencePosts(posts);
 
         // Generate Visualizations
         setNetworkNodes(generateNodes(trend.id, 25));
@@ -150,8 +171,7 @@ export const ViralTracker: React.FC = () => {
         setRegionalHeatmap(generateHeatmap());
 
     } catch (e) {
-        console.error("User analysis failed", e);
-        // Fallback to existing mock data
+        console.error("Analysis failed", e);
         setNetworkNodes(generateNodes(trend.id, 25));
         setVelocityData(generateVelocityData());
         setPsychographics(generatePsychographics());
@@ -162,7 +182,6 @@ export const ViralTracker: React.FC = () => {
   };
 
   const handleCounterMeasure = (type: string) => {
-      console.log(`[Simulation] Counter-measure triggered: ${type} against target ${selectedTrend?.id}`);
       setActionStatus('deploying');
       setResponseLog(prev => [...prev, `> Initializing ${type} protocol...`]);
       
@@ -181,21 +200,6 @@ export const ViralTracker: React.FC = () => {
                setActionStatus('active');
            }, 2500);
       }
-  };
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-black/90 p-2 rounded border border-white/10 text-xs shadow-xl backdrop-blur-md">
-          <p className="text-slate-400 mb-1 font-mono">{label}</p>
-          <div className="flex items-center space-x-2">
-             <div className="w-1.5 h-1.5 rounded-full bg-primary-500"></div>
-             <span className="text-white font-bold">{payload[0].value.toLocaleString()} Engagements</span>
-          </div>
-        </div>
-      );
-    }
-    return null;
   };
 
   const PsychographicsTooltip = ({ active, payload, label }: any) => {
@@ -242,9 +246,14 @@ export const ViralTracker: React.FC = () => {
                <span className="text-lg font-mono text-white font-bold">{activeTrends.length}</span>
             </div>
             <div className="h-8 w-px bg-white/10"></div>
-            <div className="text-right">
-               <span className="block text-[10px] text-slate-500 font-bold uppercase tracking-widest">System Status</span>
-               <span className="text-lg font-mono text-green-400 font-bold">ARMED</span>
+            <div className="flex items-center space-x-2 bg-blue-500/10 px-3 py-1 rounded border border-blue-500/20">
+               <Twitter className="w-4 h-4 text-blue-400" />
+               <div className="text-right">
+                    <span className="block text-[8px] text-blue-300 font-bold uppercase tracking-widest">Twitter API</span>
+                    <span className="text-[10px] font-mono text-white font-bold flex items-center">
+                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full mr-1 animate-pulse"></span> CONNECTED
+                    </span>
+               </div>
             </div>
          </div>
       </div>
@@ -428,82 +437,156 @@ export const ViralTracker: React.FC = () => {
                    </div>
                </div>
 
-               {/* Middle Row: Network Topology & Forensics */}
+               {/* Tab Switcher for Evidence */}
+               <div className="flex space-x-1 bg-white/5 p-1 rounded-xl self-start">
+                   <button 
+                     onClick={() => setActiveTab('network')}
+                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === 'network' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                   >
+                       Network Graph
+                   </button>
+                   <button 
+                     onClick={() => setActiveTab('evidence')}
+                     className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center ${activeTab === 'evidence' ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-white'}`}
+                   >
+                       <Twitter className="w-3 h-3 mr-2" /> Evidence Stream
+                   </button>
+               </div>
+
+               {/* Middle Row: Network Topology & Forensics OR Evidence Stream */}
                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 flex-1 min-h-[300px]">
                    
-                   {/* Network Graph */}
-                   <div className="xl:col-span-2 glass-panel p-6 rounded-3xl border-white/5 bg-black/40 relative overflow-hidden flex flex-col">
-                       <div className="flex items-center justify-between mb-4 relative z-10">
-                           <div className="flex items-center space-x-2">
-                               <Share2 className="w-5 h-5 text-purple-400" />
-                               <h3 className="font-bold text-white text-sm uppercase tracking-wider">Infection Topology</h3>
+                   {activeTab === 'network' ? (
+                       <>
+                       {/* Network Graph */}
+                       <div className="xl:col-span-2 glass-panel p-6 rounded-3xl border-white/5 bg-black/40 relative overflow-hidden flex flex-col">
+                           <div className="flex items-center justify-between mb-4 relative z-10">
+                               <div className="flex items-center space-x-2">
+                                   <Share2 className="w-5 h-5 text-purple-400" />
+                                   <h3 className="font-bold text-white text-sm uppercase tracking-wider">Infection Topology</h3>
+                               </div>
+                               <div className="bg-black/60 px-2 py-1 rounded border border-white/10 text-[10px] text-slate-400 font-mono">
+                                   NODES: {networkNodes.length} // LINKS: {networkNodes.length * 2}
+                               </div>
                            </div>
-                           <div className="bg-black/60 px-2 py-1 rounded border border-white/10 text-[10px] text-slate-400 font-mono">
-                               NODES: {networkNodes.length} // LINKS: {networkNodes.length * 2}
+                           
+                           <div className="flex-1 relative border border-white/5 rounded-2xl bg-black/60 overflow-hidden">
+                               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.1)_0%,transparent_50%)]"></div>
+                               <svg className="absolute inset-0 w-full h-full">
+                                   {/* Links */}
+                                   {networkNodes.map((node, i) => (
+                                       <line 
+                                           key={`line-${i}`}
+                                           x1="50%" y1="50%" x2={`${node.x}%`} y2={`${node.y}%`} 
+                                           stroke={node.type === 'super' ? '#ef4444' : '#3b82f6'} 
+                                           strokeWidth="1" 
+                                           strokeOpacity="0.3"
+                                           strokeDasharray={node.type === 'super' ? "none" : "4 4"}
+                                       >
+                                           {node.type === 'super' && (
+                                               <animate attributeName="stroke-opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" />
+                                           )}
+                                       </line>
+                                   ))}
+                                   {/* Nodes */}
+                                   {networkNodes.map((node, i) => (
+                                       <g key={`node-${i}`}>
+                                           {node.type === 'super' && (
+                                               <circle cx={`${node.x}%`} cy={`${node.y}%`} r={node.size * 3} fill={node.color} opacity="0.2" className="animate-ping" />
+                                           )}
+                                           <circle 
+                                               cx={`${node.x}%`} cy={`${node.y}%`} r={node.size} 
+                                               fill={node.color} 
+                                               stroke="#fff" strokeWidth="1"
+                                           />
+                                       </g>
+                                   ))}
+                                   {/* Patient Zero */}
+                                   <circle cx="50%" cy="50%" r="6" fill="#fff" className="drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] z-10" />
+                                   <text x="50%" y="54%" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">PATIENT ZERO</text>
+                               </svg>
                            </div>
                        </div>
-                       
-                       <div className="flex-1 relative border border-white/5 rounded-2xl bg-black/60 overflow-hidden">
-                           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(168,85,247,0.1)_0%,transparent_50%)]"></div>
-                           <svg className="absolute inset-0 w-full h-full">
-                               {/* Links */}
-                               {networkNodes.map((node, i) => (
-                                   <line 
-                                       key={`line-${i}`}
-                                       x1="50%" y1="50%" x2={`${node.x}%`} y2={`${node.y}%`} 
-                                       stroke={node.type === 'super' ? '#ef4444' : '#3b82f6'} 
-                                       strokeWidth="1" 
-                                       strokeOpacity="0.3"
-                                       strokeDasharray={node.type === 'super' ? "none" : "4 4"}
-                                   >
-                                       {node.type === 'super' && (
-                                           <animate attributeName="stroke-opacity" values="0.2;0.6;0.2" dur="2s" repeatCount="indefinite" />
-                                       )}
-                                   </line>
-                               ))}
-                               {/* Nodes */}
-                               {networkNodes.map((node, i) => (
-                                   <g key={`node-${i}`}>
-                                       {node.type === 'super' && (
-                                           <circle cx={`${node.x}%`} cy={`${node.y}%`} r={node.size * 3} fill={node.color} opacity="0.2" className="animate-ping" />
-                                       )}
-                                       <circle 
-                                           cx={`${node.x}%`} cy={`${node.y}%`} r={node.size} 
-                                           fill={node.color} 
-                                           stroke="#fff" strokeWidth="1"
-                                       />
-                                   </g>
-                               ))}
-                               {/* Patient Zero */}
-                               <circle cx="50%" cy="50%" r="6" fill="#fff" className="drop-shadow-[0_0_15px_rgba(255,255,255,0.8)] z-10" />
-                               <text x="50%" y="54%" textAnchor="middle" fill="white" fontSize="8" fontWeight="bold">PATIENT ZERO</text>
-                           </svg>
-                       </div>
-                   </div>
 
-                   {/* Psychographics */}
-                   <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40 flex flex-col">
-                       <div className="flex items-center space-x-2 mb-4">
-                           <Brain className="w-5 h-5 text-orange-400" />
-                           <h3 className="font-bold text-white text-sm uppercase tracking-wider">Cognitive Impact</h3>
-                       </div>
-                       <div className="flex-1 relative">
-                           <ResponsiveContainer width="100%" height="100%">
-                               <RadarChart cx="50%" cy="50%" outerRadius="70%" data={psychographics}>
-                                   <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                                   <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
-                                   <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-                                   <RechartsRadar name="Impact" dataKey="A" stroke="#f97316" strokeWidth={2} fill="#f97316" fillOpacity={0.4} />
-                                   <Tooltip content={<PsychographicsTooltip />} cursor={false} />
-                               </RadarChart>
-                           </ResponsiveContainer>
-                           <div className="absolute bottom-0 w-full text-center">
-                               <div className="inline-block bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded text-[10px] text-orange-400 font-bold uppercase">
-                                   Primary Vector: FEAR
+                       {/* Psychographics */}
+                       <div className="glass-panel p-6 rounded-3xl border-white/5 bg-black/40 flex flex-col">
+                           <div className="flex items-center space-x-2 mb-4">
+                               <Brain className="w-5 h-5 text-orange-400" />
+                               <h3 className="font-bold text-white text-sm uppercase tracking-wider">Cognitive Impact</h3>
+                           </div>
+                           <div className="flex-1 relative">
+                               <ResponsiveContainer width="100%" height="100%">
+                                   <RadarChart cx="50%" cy="50%" outerRadius="70%" data={psychographics}>
+                                       <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                                       <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }} />
+                                       <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
+                                       <RechartsRadar name="Impact" dataKey="A" stroke="#f97316" strokeWidth={2} fill="#f97316" fillOpacity={0.4} />
+                                       <Tooltip content={<PsychographicsTooltip />} cursor={false} />
+                                   </RadarChart>
+                               </ResponsiveContainer>
+                               <div className="absolute bottom-0 w-full text-center">
+                                   <div className="inline-block bg-orange-500/10 border border-orange-500/20 px-3 py-1 rounded text-[10px] text-orange-400 font-bold uppercase">
+                                       Primary Vector: FEAR
+                                   </div>
                                </div>
                            </div>
                        </div>
-                   </div>
+                       </>
+                   ) : (
+                       // EVIDENCE STREAM TAB
+                       <div className="xl:col-span-3 glass-panel p-6 rounded-3xl border-white/5 bg-black/40 flex flex-col">
+                           <div className="flex items-center justify-between mb-4">
+                               <div className="flex items-center space-x-3">
+                                   <div className="bg-blue-500/20 p-2 rounded-lg">
+                                       <Twitter className="w-5 h-5 text-blue-400" />
+                                   </div>
+                                   <div>
+                                       <h3 className="font-bold text-white text-sm uppercase tracking-wider">Social Evidence Stream</h3>
+                                       <p className="text-[10px] text-slate-500">Live ingestion from Twitter/X Firehose (Simulated)</p>
+                                   </div>
+                               </div>
+                               <span className="text-xs bg-white/5 px-2 py-1 rounded text-slate-400 border border-white/10">
+                                   {evidencePosts.length} Items
+                               </span>
+                           </div>
+                           
+                           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                               {evidencePosts.map(post => (
+                                   <div key={post.id} className="bg-black/40 border border-white/5 rounded-xl p-4 hover:border-blue-500/30 transition-colors group">
+                                       <div className="flex justify-between items-start mb-2">
+                                           <div className="flex items-center space-x-2">
+                                               <div className={`w-8 h-8 rounded-full ${post.avatarColor} flex items-center justify-center font-bold text-white text-xs`}>
+                                                   {post.handle[1].toUpperCase()}
+                                               </div>
+                                               <div>
+                                                   <div className="flex items-center space-x-1">
+                                                       <span className="text-sm font-bold text-white">{post.author}</span>
+                                                       {post.isBot && <span className="text-[9px] bg-red-500/20 text-red-400 px-1 rounded">BOT</span>}
+                                                   </div>
+                                                   <span className="text-xs text-slate-500">{post.handle}</span>
+                                               </div>
+                                           </div>
+                                           <span className="text-[10px] text-slate-500">{post.timeAgo}</span>
+                                       </div>
+                                       <p className="text-sm text-slate-300 mb-3 leading-relaxed">
+                                           {post.content}
+                                       </p>
+                                       <div className="flex justify-between items-center text-xs text-slate-500 border-t border-white/5 pt-2">
+                                           <span className="flex items-center"><MessageSquare className="w-3 h-3 mr-1" /> {Math.floor(Math.random()*50)}</span>
+                                           <span className="flex items-center group-hover:text-green-400"><CornerDownRight className="w-3 h-3 mr-1" /> {post.retweets}</span>
+                                           <span className="flex items-center group-hover:text-red-400"><Target className="w-3 h-3 mr-1" /> {post.likes}</span>
+                                       </div>
+                                   </div>
+                               ))}
+                           </div>
+                           {evidencePosts.length === 0 && (
+                               <div className="flex-1 flex flex-col items-center justify-center text-slate-500 opacity-50 py-10">
+                                   <Twitter className="w-12 h-12 mb-2" />
+                                   <p>No social evidence linked to this vector.</p>
+                               </div>
+                           )}
+                       </div>
+                   )}
                </div>
 
                {/* Bottom: Action Console */}

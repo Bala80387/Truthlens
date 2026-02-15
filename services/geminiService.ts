@@ -217,6 +217,7 @@ export const analyzeContent = async (
        - Identify "Digital Artifacts" (metallic undertones in high frequencies).
     3. EVIDENCE-BASED: Cite specific evidence or logical inconsistencies.
     4. EXPLAINABLE AI: Use a "Chain of Thought" approach. Premise -> Feature Extraction -> Conclusion.
+    5. KNOWLEDGE GRAPH: Extract entities and relationships to build a graph representation of the claim.
 
     CLASSIFICATION RULES:
     - Real: Corroborated by reliable sources / Organic human content.
@@ -262,9 +263,38 @@ export const analyzeContent = async (
             perplexityScore: { type: Type.INTEGER, description: "0-100 Text complexity (Low = AI)" },
             burstinessScore: { type: Type.INTEGER, description: "0-100 Sentence variation (Low = AI)" }
         }
+      },
+      knowledgeGraph: {
+        type: Type.OBJECT,
+        properties: {
+          nodes: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                label: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['Person', 'Organization', 'Location', 'Event', 'Concept', 'Claim'] },
+                riskScore: { type: Type.INTEGER, description: "0-100 Risk level of entity" }
+              }
+            }
+          },
+          links: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                source: { type: Type.STRING, description: "Source node ID" },
+                target: { type: Type.STRING, description: "Target node ID" },
+                relation: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['supports', 'contradicts', 'originates_from', 'mentions', 'affiliated_with'] }
+              }
+            }
+          }
+        }
       }
     },
-    required: ["classification", "confidence", "reasoning", "viralityScore", "technicalMetrics", "isAiGenerated"]
+    required: ["classification", "confidence", "reasoning", "viralityScore", "technicalMetrics", "isAiGenerated", "knowledgeGraph"]
   };
 
   try {
@@ -277,6 +307,7 @@ export const analyzeContent = async (
             1. Transcribe the audio.
             2. Analyze the Audio Signal: Look for metallic artifacts, lack of breath, or perfect pitch stability (Robotic).
             3. Analyze the Text Syntax: Look for AI writing patterns (repetitive transitions, low burstiness).
+            4. Extract Knowledge Graph entities.
             
             Return JSON matching the schema. 
             If it sounds robotic or the text is generic AI slop, set 'isAiGenerated' to true and 'aiProbability' > 80.
@@ -292,25 +323,13 @@ export const analyzeContent = async (
             },
             config: {
                 systemInstruction: systemInstruction,
+                responseMimeType: "application/json",
+                responseSchema: schema
             }
         });
 
         const textResponse = response.text || "{}";
-        const jsonStr = cleanJsonString(textResponse);
-        try {
-            resultJson = JSON.parse(jsonStr);
-        } catch (e) {
-            console.warn("Audio parsing failed, fallback", textResponse);
-            resultJson = {
-                classification: "Unverified",
-                confidence: 0,
-                summary: "Audio analysis completed: " + textResponse.substring(0, 200),
-                reasoning: ["Raw Audio Analysis: " + textResponse],
-                viralityScore: 50,
-                isAiGenerated: true,
-                technicalMetrics: { aiProbability: 50, perplexityScore: 50, burstinessScore: 50 }
-            };
-        }
+        resultJson = JSON.parse(textResponse);
     } 
     // --- IMAGE / VIDEO ANALYSIS ---
     else if ((type === 'image' || type === 'video') && imageBase64) {
@@ -319,6 +338,7 @@ export const analyzeContent = async (
         1. Scan for GAN/Diffusion artifacts: warped backgrounds, asymmetrical facial features (eyes, ears), unnatural skin texture.
         2. Analyze lighting consistency.
         3. Extract any text and verify claims.
+        4. Build a Knowledge Graph of identified people, objects, and text entities.
         
         Return a JSON object matching the schema. 
         In 'reasoning', list specific visual artifacts found.
@@ -343,6 +363,7 @@ export const analyzeContent = async (
       try {
         resultJson = JSON.parse(jsonStr);
       } catch (e) {
+        // Fallback for non-strict JSON models (flash-image can be chatty)
         resultJson = {
           classification: "Unverified",
           confidence: 0,
@@ -350,7 +371,8 @@ export const analyzeContent = async (
           reasoning: ["Could not parse structured forensic data."],
           viralityScore: 0,
           isAiGenerated: false,
-          technicalMetrics: { bertLinguisticScore: 50, lstmTemporalConsistency: 50, vitVisualArtifacts: 50, aiProbability: 50 }
+          technicalMetrics: { bertLinguisticScore: 50, lstmTemporalConsistency: 50, vitVisualArtifacts: 50, aiProbability: 50 },
+          knowledgeGraph: { nodes: [], links: [] }
         }
       }
 
@@ -365,6 +387,7 @@ export const analyzeContent = async (
           1. Domain Credibility & Typosquatting.
           2. Content Analysis: Check against verified facts.
           3. AI Detection: Estimate if the content on this page is AI-generated.
+          4. Knowledge Graph: Map key entities and claims.
           Return result in JSON.
         `;
       } else {
@@ -375,6 +398,7 @@ export const analyzeContent = async (
              - If text has high variance and specific nuances, flag as Human.
           2. Fact-check claims.
           3. Identify logical fallacies.
+          4. Knowledge Graph: Extract entities (People, Orgs, Locations) and Claims. Link them based on relationships found in text.
           Return result in JSON.
         `;
       }
@@ -410,7 +434,8 @@ export const analyzeContent = async (
           aiProbability: 0,
           perplexityScore: 0,
           burstinessScore: 0
-      }
+      },
+      knowledgeGraph: resultJson.knowledgeGraph || { nodes: [], links: [] }
     };
 
   } catch (error) {
@@ -425,7 +450,8 @@ export const analyzeContent = async (
       viralityScore: 0,
       isAiGenerated: false,
       timestamp: Date.now(),
-      technicalMetrics: { bertLinguisticScore: 0, lstmTemporalConsistency: 0, vitVisualArtifacts: 0, aiProbability: 0 }
+      technicalMetrics: { bertLinguisticScore: 0, lstmTemporalConsistency: 0, vitVisualArtifacts: 0, aiProbability: 0 },
+      knowledgeGraph: { nodes: [], links: [] }
     };
   }
 };

@@ -3,12 +3,12 @@ export type View = 'dashboard' | 'analyzer' | 'tracker' | 'geo' | 'education' | 
 export type Classification = 'Real' | 'Fake' | 'Misleading' | 'Satire' | 'Unverified';
 
 export interface TechnicalMetrics {
-  bertLinguisticScore: number; // 0-100, measures semantic coherence
-  lstmTemporalConsistency: number; // 0-100, measures narrative timeline logic
-  vitVisualArtifacts: number; // 0-100, measures probability of deepfake artifacts
-  aiProbability: number; // 0-100, Probability text/audio is AI generated
-  perplexityScore?: number; // 0-100, Low = AI, High = Human
-  burstinessScore?: number; // 0-100, Low = AI, High = Human
+  bertLinguisticScore: number;
+  lstmTemporalConsistency: number;
+  vitVisualArtifacts: number;
+  aiProbability: number;
+  perplexityScore?: number;
+  burstinessScore?: number;
 }
 
 export interface WebSource {
@@ -25,6 +25,31 @@ export interface InvestigationResult {
   keyEvidence: string[];
 }
 
+export interface GraphNode {
+  id: string;
+  label: string;
+  type: 'Person' | 'Organization' | 'Location' | 'Event' | 'Concept' | 'Claim';
+  riskScore: number; // 0-100
+  group?: number;
+  // Simulation props
+  x?: number;
+  y?: number;
+  vx?: number;
+  vy?: number;
+}
+
+export interface GraphLink {
+  source: string;
+  target: string;
+  relation: string;
+  type: 'supports' | 'contradicts' | 'originates_from' | 'mentions' | 'affiliated_with';
+}
+
+export interface KnowledgeGraph {
+  nodes: GraphNode[];
+  links: GraphLink[];
+}
+
 export interface AnalysisResult {
   classification: Classification;
   confidence: number;
@@ -32,36 +57,12 @@ export interface AnalysisResult {
   reasoning: string[];
   factChecks: Array<{ claim: string; verdict: string; source: string }>;
   emotionalTriggers: string[];
-  viralityScore: number; // 0-100
+  viralityScore: number;
   isAiGenerated: boolean;
   timestamp?: number;
   technicalMetrics?: TechnicalMetrics;
-  investigation?: InvestigationResult; // New field for deep agent report
-}
-
-export interface ViralSource {
-  id: string;
-  handle: string;
-  avatar: string;
-  platform: 'Twitter' | 'Facebook' | 'Telegram' | 'TikTok' | 'Reddit';
-  accountAge: string;
-  followers: number;
-  credibilityScore: number; // 0-100 (100 is trusted)
-  botProbability: number; // 0-100
-  location: string;
-  networkCluster: 'Botnet' | 'Political' | 'Organic' | 'State-Sponsored';
-  recentFlags: number;
-}
-
-export interface ViralTrend {
-  id: string;
-  topic: string;
-  volume: number; // mentions per minute
-  velocity: number; // % growth
-  status: 'Active' | 'Contained' | 'Critical';
-  sourceUser: ViralSource;
-  timestamp: number;
-  region: string;
+  investigation?: InvestigationResult;
+  knowledgeGraph?: KnowledgeGraph; // New field
 }
 
 export interface HistoryItem extends AnalysisResult {
@@ -70,16 +71,11 @@ export interface HistoryItem extends AnalysisResult {
   type: 'text' | 'image' | 'url' | 'video' | 'audio';
 }
 
-export interface NewsItem {
-  id: string;
-  title: string;
-  source: string;
-  category: 'Politics' | 'Health' | 'Finance' | 'Tech' | 'Global' | 'Cyber';
-  timestamp: number;
-  virality: number;
-  status: Classification;
-  snippet: string;
-  author?: string;
+export interface UserSettings {
+  sensitivity: 'low' | 'medium' | 'high';
+  autoDetectLanguage: boolean;
+  notifications: boolean;
+  theme: 'dark' | 'light';
 }
 
 export interface QuizQuestion {
@@ -90,19 +86,29 @@ export interface QuizQuestion {
   explanation: string;
 }
 
-export interface EducationModule {
+export interface ViralTrend {
   id: string;
-  title: string;
-  description: string;
-  difficulty: 'Beginner' | 'Intermediate' | 'Expert';
-  questions: QuizQuestion[];
+  topic: string;
+  volume: number;
+  velocity: number;
+  status: 'Active' | 'Critical' | 'Contained';
+  sourceUser: ViralSource;
+  timestamp: number;
+  region: string;
 }
 
-export interface UserSettings {
-  sensitivity: 'low' | 'medium' | 'high';
-  autoDetectLanguage: boolean;
-  notifications: boolean;
-  theme: 'dark' | 'light'; // kept for future use
+export interface ViralSource {
+  id: string;
+  handle: string;
+  avatar: string;
+  platform: string;
+  accountAge: string;
+  followers: number;
+  credibilityScore: number;
+  botProbability: number;
+  location: string;
+  networkCluster: 'Botnet' | 'State-Sponsored' | 'Organic' | 'Political';
+  recentFlags: number;
 }
 
 export interface GeoRegion {
@@ -119,5 +125,17 @@ export interface AttackVector {
   sourceRegionId: string;
   targetRegionId: string;
   volume: number;
-  type: 'Botnet' | 'Organic' | 'State-Sponsored';
+  type: 'Botnet' | 'State-Sponsored' | 'Organic';
+}
+
+export interface NewsItem {
+    id: string;
+    title: string;
+    source: string;
+    category: 'Politics' | 'Health' | 'Finance' | 'Tech' | 'Global' | 'Cyber';
+    timestamp: number;
+    virality: number;
+    status: Classification;
+    snippet: string;
+    author: string;
 }
