@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect, useRef } from 'react';
-import { MessageCircle, X, Send, Mic, Volume2, MicOff, VolumeX, Bot, User, Minimize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Mic, Volume2, MicOff, VolumeX, Bot, Minimize2, Settings2 } from 'lucide-react';
 import { GoogleGenAI } from "@google/genai";
+import { generateTTS } from '../services/geminiService';
 
 interface Message {
   id: string;
@@ -9,6 +9,31 @@ interface Message {
   text: string;
   timestamp: number;
 }
+
+// Utility: Decode PCM (Gemini TTS Output)
+async function decodeAudioData(base64Data: string, ctx: AudioContext): Promise<AudioBuffer> {
+    const binary = atob(base64Data);
+    const len = binary.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
+    
+    // Convert Int16 PCM to Float32
+    const dataInt16 = new Int16Array(bytes.buffer);
+    const buffer = ctx.createBuffer(1, dataInt16.length, 24000); // Mono, 24kHz standard for Gemini
+    const channelData = buffer.getChannelData(0);
+    for (let i = 0; i < dataInt16.length; i++) {
+        channelData[i] = dataInt16[i] / 32768.0;
+    }
+    return buffer;
+}
+
+const VOICES = [
+    { id: 'Kore', label: 'Kore (Balanced)', type: 'Standard' },
+    { id: 'Puck', label: 'Puck (Assertive)', type: 'British Style' },
+    { id: 'Charon', label: 'Charon (Deep)', type: 'Authoritative' },
+    { id: 'Fenrir', label: 'Fenrir (Fast)', type: 'Alert' },
+    { id: 'Zephyr', label: 'Zephyr (Calm)', type: 'Soothing' },
+];
 
 export const ChatAssistant: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -26,8 +51,10 @@ export const ChatAssistant: React.FC = () => {
   
   // Voice State
   const [isListening, setIsListening] = useState(false);
-  const [isSpeaking, setIsSpeaking] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
+  const [selectedVoice, setSelectedVoice] = useState('Kore');
+  const [showSettings, setShowSettings] = useState(false);
+  const [audioContext, setAudioContext] = useState<AudioContext | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -71,13 +98,26 @@ export const ChatAssistant: React.FC = () => {
       }
   };
 
-  const speak = (text: string) => {
-      if (!voiceEnabled) return;
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.onstart = () => setIsSpeaking(true);
-      utterance.onend = () => setIsSpeaking(false);
-      window.speechSynthesis.speak(utterance);
+  const playAudioResponse = async (text: string) => {
+      try {
+          const base64Audio = await generateTTS(text, selectedVoice);
+          if (!base64Audio) return;
+
+          const ctx = audioContext || new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
+          if (!audioContext) setAudioContext(ctx);
+
+          if (ctx.state === 'suspended') {
+              await ctx.resume();
+          }
+
+          const buffer = await decodeAudioData(base64Audio, ctx);
+          const source = ctx.createBufferSource();
+          source.buffer = buffer;
+          source.connect(ctx.destination);
+          source.start();
+      } catch (e) {
+          console.error("Audio Playback Error:", e);
+      }
   };
 
   const handleSend = async (textOverride?: string) => {
@@ -108,7 +148,7 @@ export const ChatAssistant: React.FC = () => {
           setMessages(prev => [...prev, botMsg]);
           
           if (voiceEnabled) {
-              speak(reply);
+              await playAudioResponse(reply);
           }
 
       } catch (e) {
@@ -132,7 +172,7 @@ export const ChatAssistant: React.FC = () => {
   }
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex flex-col transition-all duration-300 ${isMinimized ? 'w-72 h-14' : 'w-80 md:w-96 h-[500px]'}`}>
+    <div className={`fixed bottom-6 right-6 z-50 flex flex-col transition-all duration-300 ${isMinimized ? 'w-72 h-14' : 'w-80 md:w-96 h-[550px]'}`}>
         {/* Header */}
         <div className="bg-primary-600 rounded-t-2xl p-4 flex items-center justify-between shadow-lg cursor-pointer" onClick={() => !isMinimized && setIsMinimized(!isMinimized)}>
             <div className="flex items-center space-x-2">
@@ -148,6 +188,9 @@ export const ChatAssistant: React.FC = () => {
                 </div>
             </div>
             <div className="flex items-center space-x-1">
+                <button onClick={(e) => { e.stopPropagation(); setShowSettings(!showSettings); }} className="p-1.5 hover:bg-white/10 rounded-full text-white">
+                    <Settings2 className="w-4 h-4" />
+                </button>
                 <button onClick={(e) => { e.stopPropagation(); setIsMinimized(!isMinimized); }} className="p-1.5 hover:bg-white/10 rounded-full text-white">
                     <Minimize2 className="w-4 h-4" />
                 </button>
@@ -159,7 +202,48 @@ export const ChatAssistant: React.FC = () => {
 
         {/* Body */}
         {!isMinimized && (
-            <div className="flex-1 bg-surfaceHighlight border-x border-b border-white/10 rounded-b-2xl flex flex-col overflow-hidden shadow-2xl">
+            <div className="flex-1 bg-surfaceHighlight border-x border-b border-white/10 rounded-b-2xl flex flex-col overflow-hidden shadow-2xl relative">
+                
+                {/* Settings Overlay */}
+                {showSettings && (
+                    <div className="absolute top-0 left-0 right-0 z-20 bg-black/90 p-4 border-b border-white/10 animate-fade-in">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-xs font-bold text-slate-300 uppercase">Voice Settings</h4>
+                            <button onClick={() => setShowSettings(false)} className="text-slate-500 hover:text-white"><X className="w-4 h-4"/></button>
+                        </div>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-sm text-slate-300">Enable TTS</span>
+                                <button 
+                                    onClick={() => setVoiceEnabled(!voiceEnabled)}
+                                    className={`w-10 h-5 rounded-full p-1 transition-colors ${voiceEnabled ? 'bg-primary-600' : 'bg-slate-700'}`}
+                                >
+                                    <div className={`w-3 h-3 rounded-full bg-white transition-transform ${voiceEnabled ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                </button>
+                            </div>
+                            <div>
+                                <span className="text-xs text-slate-500 block mb-2">Regional Voice / Accent</span>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {VOICES.map(voice => (
+                                        <button
+                                            key={voice.id}
+                                            onClick={() => setSelectedVoice(voice.id)}
+                                            className={`text-xs p-2 rounded border text-left ${
+                                                selectedVoice === voice.id 
+                                                ? 'bg-primary-600/20 border-primary-500 text-primary-300' 
+                                                : 'bg-white/5 border-white/10 text-slate-400 hover:bg-white/10'
+                                            }`}
+                                        >
+                                            <div className="font-bold">{voice.id}</div>
+                                            <div className="text-[9px] opacity-70">{voice.type}</div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Messages Area */}
                 <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-black/40">
                     {messages.map((msg) => (
@@ -216,11 +300,11 @@ export const ChatAssistant: React.FC = () => {
                     </div>
                     <div className="flex justify-between items-center mt-2 px-1">
                          <button 
-                            onClick={() => { setVoiceEnabled(!voiceEnabled); window.speechSynthesis.cancel(); }}
+                            onClick={() => setShowSettings(!showSettings)}
                             className="text-[10px] text-slate-500 flex items-center hover:text-white transition-colors"
                          >
                             {voiceEnabled ? <Volume2 className="w-3 h-3 mr-1" /> : <VolumeX className="w-3 h-3 mr-1" />}
-                            {voiceEnabled ? 'Voice Output On' : 'Voice Output Off'}
+                            {voiceEnabled ? `${selectedVoice} Voice` : 'Voice Off'}
                          </button>
                          <span className="text-[10px] text-slate-600">Gemini 3 Flash</span>
                     </div>
