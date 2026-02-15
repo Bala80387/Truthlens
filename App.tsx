@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { View, AnalysisResult, HistoryItem } from './types';
 import { Navigation } from './components/Navigation';
@@ -10,6 +11,7 @@ import { SocialShield } from './components/SocialShield';
 import { ViralTracker } from './components/ViralTracker';
 import { GeoAnalysis } from './components/GeoAnalysis';
 import { RealTimeNews } from './components/RealTimeNews';
+import { ChatAssistant } from './components/ChatAssistant';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
@@ -92,6 +94,9 @@ const App: React.FC = () => {
           {renderView()}
         </div>
       </main>
+      
+      {/* Global Chat Assistant */}
+      <ChatAssistant />
     </div>
   );
 };

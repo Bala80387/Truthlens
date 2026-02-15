@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { AnalysisResult, Classification, ViralSource, InvestigationResult } from "../types";
 
@@ -11,6 +12,25 @@ if (!apiKey) {
   throw new Error("API Key not found");
 }
 const ai = new GoogleGenAI({ apiKey });
+
+export const generateTTS = async (text: string): Promise<string> => {
+  try {
+     const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash-preview-tts',
+        contents: { parts: [{ text }] },
+        config: {
+            responseModalities: [Modality.AUDIO],
+            speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } }
+            }
+        }
+     });
+     return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || '';
+  } catch (e) {
+      console.error("TTS Generation Error:", e);
+      return '';
+  }
+};
 
 export const runAutonomousInvestigation = async (claim: string): Promise<InvestigationResult> => {
     try {
@@ -267,7 +287,7 @@ export const analyzeContent = async (
             model: 'gemini-2.5-flash-native-audio-preview-12-2025',
             contents: {
                 parts: [
-                    { inlineData: { mimeType: 'audio/mp3', data: imageBase64 } }, // Assuming MP3 or WAV, Gemini handles common formats
+                    { inlineData: { mimeType: 'audio/mp3', data: imageBase64 } }, 
                     { text: prompt }
                 ]
             },
@@ -282,14 +302,13 @@ export const analyzeContent = async (
             resultJson = JSON.parse(jsonStr);
         } catch (e) {
             console.warn("Audio parsing failed, fallback", textResponse);
-            // Fallback for audio model if it returns unstructured text
             resultJson = {
                 classification: "Unverified",
                 confidence: 0,
                 summary: "Audio analysis completed: " + textResponse.substring(0, 200),
                 reasoning: ["Raw Audio Analysis: " + textResponse],
                 viralityScore: 50,
-                isAiGenerated: true, // bias towards caution on failure
+                isAiGenerated: true,
                 technicalMetrics: { aiProbability: 50, perplexityScore: 50, burstinessScore: 50 }
             };
         }
@@ -375,7 +394,6 @@ export const analyzeContent = async (
       resultJson = JSON.parse(textResponse);
     }
 
-    // Map strict types to ensure UI safety
     return {
       classification: (resultJson.classification as Classification) || 'Unverified',
       confidence: resultJson.confidence || 0,
@@ -398,7 +416,6 @@ export const analyzeContent = async (
 
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    // Fallback error result
     return {
       classification: 'Unverified',
       confidence: 0,
@@ -414,38 +431,25 @@ export const analyzeContent = async (
   }
 };
 
-export const generateAudioReport = async (
-  summary: string,
-  classification: string,
-  language: string,
-  gender: 'male' | 'female'
-): Promise<string | undefined> => {
+export const translateText = async (text: string, language: string): Promise<string> => {
   try {
-    const voiceName = gender === 'female' ? 'Kore' : 'Fenrir';
-    const safeSummary = summary.length > 400 ? summary.substring(0, 400) + "..." : summary;
-
     const prompt = `
-      Translate this verification summary into ${language}.
-      Status: ${classification}.
-      Summary: ${safeSummary}
+      Translate the following analysis summary into ${language}. 
+      Keep technical terms (like 'AI', 'Deepfake', 'TruthLens') in English if they are commonly used, or use appropriate localized technical terms.
+      Return ONLY the translated text. Do not add markdown or conversational filler.
+      
+      Text to translate:
+      "${text}"
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: prompt }] }],
-      config: {
-        responseModalities: [Modality.AUDIO],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: voiceName },
-          },
-        },
-      },
+      model: 'gemini-3-flash-preview',
+      contents: prompt,
     });
 
-    return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    return response.text?.trim() || text;
   } catch (e) {
-    console.error("TTS Error:", e);
-    throw e;
+    console.error("Translation Error:", e);
+    return text;
   }
 };
