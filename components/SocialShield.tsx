@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, Heart, MessageCircle, Share2, ShieldAlert, CheckCircle, AlertTriangle, Send, X, MoreHorizontal, Shield, Lock, Eye, ScanLine, Zap, Activity, Search, Brain, Fingerprint, ScanEye, Wand2, Terminal, AlertOctagon, Network, Globe } from 'lucide-react';
+import { User, Heart, MessageCircle, Share2, ShieldAlert, CheckCircle, AlertTriangle, Send, X, MoreHorizontal, Shield, Lock, Eye, ScanLine, Zap, Activity, Search, Brain, Fingerprint, ScanEye, Wand2, Terminal, AlertOctagon, Network, Globe, Ban, EyeOff, FileWarning, RefreshCw, MousePointerClick } from 'lucide-react';
 import { analyzeContent } from '../services/geminiService';
 import { AnalysisResult } from '../types';
 import { PieChart, Pie, Cell, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts';
@@ -15,11 +15,20 @@ interface Post {
   comments: number;
   status: 'Real' | 'Fake' | 'Misleading' | 'Satire' | 'Unverified';
   aiConfidence?: number;
+  isQuarantined?: boolean; // New: Hide content by default if high risk
   // X-Ray Metadata
   originNode?: string;
   botProb?: number;
   propagationRate?: string;
   networkCluster?: string;
+}
+
+interface DefenseNode {
+    id: number;
+    x: number;
+    y: number;
+    status: 'clean' | 'infected' | 'recovering';
+    velocity: number;
 }
 
 const MOCK_NARRATIVE_DNA = [
@@ -38,6 +47,14 @@ export const SocialShield: React.FC = () => {
   const [xRayMode, setXRayMode] = useState(false);
   const [narrativeDNA, setNarrativeDNA] = useState(MOCK_NARRATIVE_DNA);
   
+  // Shield Status
+  const [shieldActive, setShieldActive] = useState(true);
+  const [shieldIntegrity, setShieldIntegrity] = useState(100);
+  const [threatsBlocked, setThreatsBlocked] = useState(12);
+  
+  // Interactive Grid State
+  const [defenseNodes, setDefenseNodes] = useState<DefenseNode[]>([]);
+
   // Feed State
   const [posts, setPosts] = useState<Post[]>([
     {
@@ -54,7 +71,8 @@ export const SocialShield: React.FC = () => {
       originNode: 'MIT_Edu_Relay_04',
       botProb: 2,
       propagationRate: 'Normal',
-      networkCluster: 'Academic/Tech'
+      networkCluster: 'Academic/Tech',
+      isQuarantined: false
     },
     {
       id: 2,
@@ -70,7 +88,25 @@ export const SocialShield: React.FC = () => {
       originNode: 'Unknown_Proxy_VN',
       botProb: 89,
       propagationRate: 'Viral/Spike',
-      networkCluster: 'Disinfo_Botnet_B'
+      networkCluster: 'Disinfo_Botnet_B',
+      isQuarantined: true
+    },
+    {
+      id: 3,
+      author: 'Crypto King',
+      handle: '@crypto_moon',
+      avatarColor: 'bg-yellow-500',
+      content: 'URGENT: Bitcoin CEO just arrested for money laundering! Price crashing to $0! Click link to salvage your wallet!',
+      time: '12m ago',
+      likes: 45,
+      comments: 12,
+      status: 'Fake',
+      aiConfidence: 92,
+      originNode: 'Botnet_Cluster_Alpha',
+      botProb: 95,
+      propagationRate: 'High',
+      networkCluster: 'Fin-Scam',
+      isQuarantined: true
     }
   ]);
 
@@ -80,33 +116,88 @@ export const SocialShield: React.FC = () => {
 
   // Real-time Draft Safety Score
   const [safetyScore, setSafetyScore] = useState(100);
+  const [detectedTriggers, setDetectedTriggers] = useState<string[]>([]);
 
-  // Simulation Nodes for Graph
-  const [simNodes, setSimNodes] = useState<{x: number, y: number, active: boolean, delay: number}[]>([]);
-
-  // Init Simulation Grid
+  // Init Defense Grid
   useEffect(() => {
-      const nodes = [];
-      for(let i=0; i<30; i++) {
+      const nodes: DefenseNode[] = [];
+      for(let i=0; i<40; i++) {
           nodes.push({
+              id: i,
               x: Math.random() * 100,
               y: Math.random() * 100,
-              active: false,
-              delay: Math.random() * 2000
+              status: Math.random() > 0.9 ? 'infected' : 'clean',
+              velocity: Math.random() * 0.5 + 0.1
           });
       }
-      setSimNodes(nodes);
+      setDefenseNodes(nodes);
   }, []);
+
+  // Defense Grid Game Loop
+  useEffect(() => {
+      const interval = setInterval(() => {
+          setDefenseNodes(prev => {
+              // Move nodes slightly
+              const moved = prev.map(node => ({
+                  ...node,
+                  x: (node.x + (Math.random() - 0.5) * node.velocity + 100) % 100,
+                  y: (node.y + (Math.random() - 0.5) * node.velocity + 100) % 100
+              }));
+
+              // Random Infection if Shield is down or struggling
+              if (Math.random() > (shieldActive ? 0.95 : 0.8)) {
+                  const targetIdx = Math.floor(Math.random() * moved.length);
+                  if (moved[targetIdx].status === 'clean') {
+                      moved[targetIdx].status = 'infected';
+                      setShieldIntegrity(s => Math.max(0, s - 2));
+                  }
+              }
+              
+              // Auto-recovery if Shield Integrity is high
+              if (shieldActive && shieldIntegrity > 80 && Math.random() > 0.9) {
+                   const infected = moved.filter(n => n.status === 'infected');
+                   if (infected.length > 0) {
+                       const recoverIdx = moved.indexOf(infected[0]);
+                       moved[recoverIdx].status = 'recovering';
+                       setTimeout(() => {
+                           setDefenseNodes(current => current.map(n => n.id === moved[recoverIdx].id ? {...n, status: 'clean'} : n));
+                       }, 1000);
+                   }
+              }
+
+              return moved;
+          });
+      }, 1000);
+      return () => clearInterval(interval);
+  }, [shieldActive, shieldIntegrity]);
+
+  const neutralizeNode = (id: number) => {
+      setDefenseNodes(prev => prev.map(n => {
+          if (n.id === id && n.status === 'infected') {
+              setThreatsBlocked(t => t + 1);
+              setShieldIntegrity(s => Math.min(100, s + 5));
+              return { ...n, status: 'recovering' };
+          }
+          return n;
+      }));
+      // Delayed clean
+      setTimeout(() => {
+          setDefenseNodes(prev => prev.map(n => n.id === id ? { ...n, status: 'clean' } : n));
+      }, 800);
+  };
 
   // Simulate typing analysis & Narrative DNA updates
   useEffect(() => {
     if (draft.length > 5) {
         setIsScanning(true);
         // Heuristic analysis for demo visualizer
-        const riskKeywords = ['shocking', 'secret', 'banned', 'leak', 'guaranteed', '100%', 'urgent', 'alert', 'they'];
-        const logicKeywords = ['study', 'report', 'evidence', 'according', 'data', 'analysis'];
+        const riskKeywords = ['shocking', 'secret', 'banned', 'leak', 'guaranteed', '100%', 'urgent', 'alert', 'they', 'exposed', 'truth'];
+        const logicKeywords = ['study', 'report', 'evidence', 'according', 'data', 'analysis', 'confirmed'];
         
-        const fearCount = riskKeywords.filter(w => draft.toLowerCase().includes(w)).length;
+        const foundTriggers = riskKeywords.filter(w => draft.toLowerCase().includes(w));
+        setDetectedTriggers(foundTriggers);
+
+        const fearCount = foundTriggers.length;
         const logicCount = logicKeywords.filter(w => draft.toLowerCase().includes(w)).length;
         
         // Update DNA
@@ -130,6 +221,7 @@ export const SocialShield: React.FC = () => {
         setScanProgress(0);
         setIsScanning(false);
         setSafetyScore(100);
+        setDetectedTriggers([]);
         setNarrativeDNA(MOCK_NARRATIVE_DNA);
     }
   }, [draft]);
@@ -176,7 +268,8 @@ export const SocialShield: React.FC = () => {
       originNode: 'Local_Client_US',
       botProb: 0,
       propagationRate: 'Low',
-      networkCluster: 'Organic'
+      networkCluster: 'Organic',
+      isQuarantined: false
     };
     setPosts([newPost, ...posts]);
     setDraft('');
@@ -217,41 +310,60 @@ export const SocialShield: React.FC = () => {
       setWarning(null);
   };
 
+  const toggleQuarantine = (postId: number) => {
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, isQuarantined: !p.isQuarantined } : p));
+  };
+
   return (
     <div className="max-w-7xl mx-auto animate-fade-in relative pb-10">
       
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      {/* Enhanced Header with Shield Status */}
+      <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
         <div>
             <h2 className="text-3xl font-black text-white mb-1 flex items-center tracking-tighter">
-                <Shield className="w-8 h-8 mr-3 text-primary-500" />
-                SOCIAL_SENTINEL <span className="text-xs align-top ml-1 text-primary-500">v3.0</span>
+                <Shield className={`w-8 h-8 mr-3 ${shieldActive ? 'text-primary-500' : 'text-slate-600'}`} />
+                SOCIAL_SENTINEL <span className="text-xs align-top ml-1 text-primary-500">v3.1</span>
             </h2>
-            <p className="text-slate-400 font-mono text-xs">
-              ACTIVE PROTECTION LAYER // <span className="text-green-400">ONLINE</span>
-            </p>
+            <div className="flex items-center space-x-4 text-xs font-mono">
+                <span className={`flex items-center ${shieldActive ? 'text-green-400' : 'text-red-400'}`}>
+                    <div className={`w-2 h-2 rounded-full mr-2 ${shieldActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    {shieldActive ? 'SYSTEM ONLINE' : 'PROTECTION DISABLED'}
+                </span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-400">UPTIME: 99.9%</span>
+            </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-             {/* X-Ray Toggle */}
-            <button 
-                onClick={() => setXRayMode(!xRayMode)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-full border transition-all ${
-                    xRayMode 
-                    ? 'bg-purple-500/20 border-purple-500 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
-                    : 'bg-black/40 border-slate-700 text-slate-500 hover:border-slate-500'
-                }`}
-            >
-                <ScanEye className="w-4 h-4" />
-                <span className="text-xs font-bold uppercase tracking-wider">{xRayMode ? 'X-Ray Active' : 'X-Ray Vision'}</span>
-            </button>
-            
-            <div className="h-8 w-px bg-white/10"></div>
+        <div className="flex items-center space-x-4 bg-black/40 border border-white/10 p-2 rounded-xl backdrop-blur-md">
+             {/* Integrity Meter */}
+             <div className="flex flex-col items-end px-2">
+                 <span className="text-[10px] text-slate-500 uppercase font-bold">Shield Integrity</span>
+                 <div className="flex items-center space-x-2">
+                     <span className={`text-lg font-bold ${shieldIntegrity > 50 ? 'text-blue-400' : 'text-red-400'}`}>{shieldIntegrity}%</span>
+                     <Activity className={`w-4 h-4 ${shieldIntegrity > 50 ? 'text-blue-500' : 'text-red-500 animate-bounce'}`} />
+                 </div>
+             </div>
+             
+             <div className="h-8 w-px bg-white/10"></div>
 
-            <div className="flex items-center space-x-2 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-                <Eye className="w-4 h-4 text-primary-400" />
-                <span className="text-xs font-bold text-slate-300">Monitoring Stream</span>
-            </div>
+             {/* Block Counter */}
+             <div className="flex flex-col items-end px-2">
+                 <span className="text-[10px] text-slate-500 uppercase font-bold">Threats Neutralized</span>
+                 <div className="flex items-center space-x-2">
+                     <span className="text-lg font-bold text-green-400">{threatsBlocked}</span>
+                     <ShieldAlert className="w-4 h-4 text-green-500" />
+                 </div>
+             </div>
+
+             <div className="h-8 w-px bg-white/10"></div>
+
+             {/* Main Toggle */}
+             <button 
+                onClick={() => setShieldActive(!shieldActive)}
+                className={`p-3 rounded-lg transition-all ${shieldActive ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/20' : 'bg-slate-800 text-slate-500 hover:bg-slate-700'}`}
+             >
+                 <Zap className={`w-5 h-5 ${shieldActive ? 'fill-current' : ''}`} />
+             </button>
         </div>
       </div>
 
@@ -365,6 +477,41 @@ export const SocialShield: React.FC = () => {
            <div className="space-y-4">
               {posts.map(post => {
                   const result = scannedResults[post.id];
+                  // If post is quarantined and not yet revealed, show overlay
+                  if (post.isQuarantined) {
+                      return (
+                          <div key={post.id} className="glass-panel p-6 rounded-2xl border-white/5 animate-fade-in relative overflow-hidden bg-red-950/10 border-red-500/20">
+                              <div className="absolute inset-0 backdrop-blur-md z-10 flex flex-col items-center justify-center bg-black/60">
+                                  <div className="bg-red-500/20 p-4 rounded-full mb-4 border border-red-500/30">
+                                      <ShieldAlert className="w-8 h-8 text-red-500" />
+                                  </div>
+                                  <h3 className="text-red-400 font-bold text-lg mb-1">Content Quarantined</h3>
+                                  <p className="text-slate-400 text-sm mb-4">High probability of misinformation detected.</p>
+                                  <button 
+                                    onClick={() => toggleQuarantine(post.id)}
+                                    className="px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 text-white font-bold text-sm border border-white/10 transition-colors flex items-center"
+                                  >
+                                      <Eye className="w-4 h-4 mr-2" /> Reveal Content
+                                  </button>
+                              </div>
+                              {/* Background hints at content structure */}
+                              <div className="opacity-20 blur-sm pointer-events-none">
+                                  <div className="flex space-x-3 mb-4">
+                                      <div className="w-10 h-10 rounded-full bg-slate-700"></div>
+                                      <div className="space-y-2">
+                                          <div className="w-32 h-4 bg-slate-700 rounded"></div>
+                                          <div className="w-24 h-3 bg-slate-800 rounded"></div>
+                                      </div>
+                                  </div>
+                                  <div className="space-y-2">
+                                      <div className="w-full h-4 bg-slate-700 rounded"></div>
+                                      <div className="w-3/4 h-4 bg-slate-700 rounded"></div>
+                                  </div>
+                              </div>
+                          </div>
+                      )
+                  }
+
                   return (
                      <div key={post.id} className="glass-panel p-6 rounded-2xl border-white/5 animate-fade-in hover:border-white/10 transition-colors group relative overflow-hidden">
                         {scanningPostId === post.id && (
@@ -429,7 +576,18 @@ export const SocialShield: React.FC = () => {
                                  )}
                               </div>
                            </div>
-                           <button className="text-slate-600 hover:text-white transition-colors"><MoreHorizontal className="w-5 h-5" /></button>
+                           <div className="flex space-x-2">
+                                {(post.status === 'Fake' || post.status === 'Misleading') && (
+                                    <button 
+                                        onClick={() => toggleQuarantine(post.id)}
+                                        className="text-slate-600 hover:text-red-400 transition-colors p-1 hover:bg-red-500/10 rounded"
+                                        title="Quarantine Post"
+                                    >
+                                        <EyeOff className="w-4 h-4" />
+                                    </button>
+                                )}
+                                <button className="text-slate-600 hover:text-white transition-colors p-1 hover:bg-white/5 rounded"><MoreHorizontal className="w-5 h-5" /></button>
+                           </div>
                         </div>
                         
                         <p className="text-slate-200 mb-4 whitespace-pre-wrap leading-relaxed text-[15px] relative z-0">{post.content}</p>
@@ -456,6 +614,10 @@ export const SocialShield: React.FC = () => {
                                         <span className="block text-[10px] text-slate-500 uppercase">Bot Likelihood</span>
                                         <span className={`text-lg font-bold ${result.isAiGenerated ? 'text-red-400' : 'text-green-400'}`}>{result.isAiGenerated ? 'High' : 'Low'}</span>
                                     </div>
+                                </div>
+                                <div className="mt-3 flex gap-2">
+                                    <button className="flex-1 bg-red-500/10 text-red-400 text-xs font-bold py-2 rounded hover:bg-red-500/20 transition-colors border border-red-500/20">Report Botnet</button>
+                                    <button className="flex-1 bg-white/5 text-slate-300 text-xs font-bold py-2 rounded hover:bg-white/10 transition-colors border border-white/10">Add Context</button>
                                 </div>
                             </div>
                         )}
@@ -526,71 +688,71 @@ export const SocialShield: React.FC = () => {
                     <Terminal className="w-4 h-4 text-green-400" />
                     <h3 className="font-bold text-white text-sm font-mono">KEYWORD_MONITOR</h3>
                 </div>
-                <div className="space-y-3 font-mono text-xs">
-                    <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Emotional Load</span>
-                        <div className="flex space-x-1">
-                            {Array.from({length: 5}).map((_, i) => (
-                                <div key={i} className={`w-1.5 h-3 rounded-sm ${i < (narrativeDNA[0].A / 20) ? 'bg-red-500' : 'bg-slate-800'}`}></div>
-                            ))}
-                        </div>
+                {detectedTriggers.length > 0 ? (
+                    <div className="space-y-2">
+                        {detectedTriggers.map((word, i) => (
+                            <div key={i} className="flex justify-between items-center text-xs bg-red-500/10 p-2 rounded border border-red-500/20">
+                                <span className="text-red-400 font-mono">"{word.toUpperCase()}"</span>
+                                <span className="text-[10px] text-red-500 font-bold">FLAGGED</span>
+                            </div>
+                        ))}
                     </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-slate-400">Logic Density</span>
-                        <div className="flex space-x-1">
-                            {Array.from({length: 5}).map((_, i) => (
-                                <div key={i} className={`w-1.5 h-3 rounded-sm ${i < (narrativeDNA[1].A / 20) ? 'bg-blue-500' : 'bg-slate-800'}`}></div>
-                            ))}
-                        </div>
+                ) : (
+                    <div className="text-center py-6 text-slate-500 text-xs italic">
+                        No active triggers detected in draft stream.
                     </div>
-                </div>
+                )}
             </div>
 
-            {/* Viral Propagation Simulator (Enhanced AI Guardian) */}
+            {/* Interactive Network Defense Grid */}
             <div className="glass-panel p-6 rounded-2xl border-white/5 bg-black overflow-hidden relative group">
-                <div className={`absolute inset-0 opacity-20 pointer-events-none transition-colors duration-1000 ${safetyScore < 60 ? 'bg-red-900' : 'bg-blue-900'}`}></div>
-                <div className="flex items-center space-x-2 mb-3 relative z-10">
-                    <Globe className={`w-5 h-5 ${safetyScore < 60 ? 'text-red-400' : 'text-blue-400'}`} />
-                    <h3 className="font-bold text-white text-sm">Viral Simulator</h3>
+                <div className={`absolute inset-0 opacity-20 pointer-events-none transition-colors duration-1000 ${shieldIntegrity < 50 ? 'bg-red-900' : 'bg-blue-900'}`}></div>
+                <div className="flex items-center justify-between mb-3 relative z-10">
+                    <div className="flex items-center space-x-2">
+                        <Network className={`w-5 h-5 ${shieldIntegrity < 50 ? 'text-red-400' : 'text-blue-400'}`} />
+                        <h3 className="font-bold text-white text-sm">Network Defense</h3>
+                    </div>
+                    {shieldActive && (
+                        <span className="text-[10px] bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30 animate-pulse">ACTIVE</span>
+                    )}
                 </div>
-                <p className="text-xs text-slate-400 mb-3 relative z-10">Predicted propagation across network.</p>
                 
-                <div className="h-40 w-full bg-black/50 rounded-lg border border-white/10 relative overflow-hidden">
+                <div className="h-60 w-full bg-black/50 rounded-lg border border-white/10 relative overflow-hidden cursor-crosshair">
+                    {/* SVG Layer */}
                     <svg className="w-full h-full">
-                        {simNodes.map((node, i) => (
+                        {defenseNodes.map((node) => (
                             <circle 
-                                key={i} 
+                                key={node.id} 
                                 cx={`${node.x}%`} 
                                 cy={`${node.y}%`} 
-                                r={isScanning ? (safetyScore < 60 ? 3 : 2) : 1}
-                                fill={isScanning && safetyScore < 60 ? '#ef4444' : isScanning ? '#3b82f6' : '#475569'}
-                                opacity={isScanning ? 0.8 : 0.3}
-                                className="transition-all duration-500"
-                            >
-                                {isScanning && (
-                                    <animate 
-                                        attributeName="r" 
-                                        values={safetyScore < 60 ? "3;6;3" : "2;4;2"} 
-                                        dur={`${1 + Math.random()}s`} 
-                                        repeatCount="indefinite" 
-                                    />
-                                )}
-                            </circle>
+                                r={node.status === 'infected' ? 4 : 2}
+                                fill={node.status === 'infected' ? '#ef4444' : node.status === 'recovering' ? '#22c55e' : '#3b82f6'}
+                                opacity={0.8}
+                                className="transition-all duration-300"
+                                onClick={() => neutralizeNode(node.id)}
+                                style={{cursor: node.status === 'infected' ? 'pointer' : 'default'}}
+                            />
                         ))}
                     </svg>
-                    {isScanning && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                            <span className={`text-2xl font-black ${safetyScore < 60 ? 'text-red-500' : 'text-blue-500'} opacity-50`}>
-                                {safetyScore < 60 ? 'VIRAL' : 'SAFE'}
-                            </span>
+                    
+                    {/* HUD Overlay */}
+                    <div className="absolute top-2 right-2 pointer-events-none">
+                        <div className="text-[9px] text-slate-400 font-mono text-right">
+                            NODES: {defenseNodes.length}<br/>
+                            INFECTED: {defenseNodes.filter(n => n.status === 'infected').length}
+                        </div>
+                    </div>
+                    
+                    {!shieldActive && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/60 pointer-events-none">
+                            <span className="text-red-500 font-black tracking-widest border-2 border-red-500 p-2 rounded">OFFLINE</span>
                         </div>
                     )}
                 </div>
-                <div className="flex justify-between items-center mt-3 text-[10px] font-mono relative z-10">
-                    <span className="text-slate-500">REACH EST.</span>
-                    <span className={`font-bold ${safetyScore < 60 ? 'text-red-400' : 'text-green-400'}`}>
-                        {safetyScore < 60 ? '2.4M (HIGH)' : '15k (LOW)'}
-                    </span>
+                
+                <div className="mt-3 text-[10px] text-slate-500 flex items-center justify-between">
+                    <span className="flex items-center"><MousePointerClick className="w-3 h-3 mr-1" /> CLICK RED NODES TO NEUTRALIZE</span>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
                 </div>
             </div>
         </div>

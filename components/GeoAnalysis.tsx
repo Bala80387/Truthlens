@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { GeoRegion, AttackVector } from '../types';
 import { analyzeGeoThreat } from '../services/geminiService';
-import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword, Eye, Calendar, User, Fingerprint, Network, Cpu } from 'lucide-react';
+import { Globe, AlertTriangle, Shield, Activity, Target, Zap, Server, MapPin, X, Radar, Radio, Filter, CheckCircle, Lock, TrendingUp, Terminal, Users, FileText, ChevronRight, Hash, Sword, Eye, Calendar, User, Fingerprint, Network, Cpu, Download } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 const MOCK_REGIONS: GeoRegion[] = [
@@ -323,37 +323,54 @@ export const GeoAnalysis: React.FC = () => {
 
   const handleOpenReport = async (report: {title: string, date: string}) => {
       setIsLoadingReport(report.title);
-      // Simulate fetch delay
+      // Simulate fetch delay to mimic database retrieval
       await new Promise(r => setTimeout(r, 1500));
+      
+      const isCyber = report.title.toLowerCase().includes('botnet') || report.title.toLowerCase().includes('cyber') || report.title.toLowerCase().includes('traffic');
       
       const detailedReport: ReportDetail = {
           title: report.title,
           date: report.date,
-          id: `INTEL-${Math.floor(Math.random() * 10000)}`,
-          author: "Unit 8200 - Cyber Intelligence",
+          id: `INTEL-${Math.floor(Math.random() * 10000).toString().padStart(5, '0')}`,
+          author: isCyber ? "Cyber Command - Unit 8200" : "Global Risk Analyst Team",
           classification: "TOP SECRET // NOFORN",
-          summary: "This intelligence intercept indicates a coordinated effort to leverage localized botnets for narrative shaping. Traffic analysis shows signature patterns consistent with state-aligned actors attempting to destabilize key infrastructure nodes.",
-          keyFindings: [
+          summary: isCyber 
+            ? "Intercepted telemetry indicates a coordinated effort to leverage localized botnets for narrative shaping. Traffic analysis shows signature patterns consistent with state-aligned actors attempting to destabilize key infrastructure nodes via DDoS and misinformation flooding."
+            : "Regional instability has led to a surge in organic misinformation. Local actors are leveraging social media platforms to spread unverified claims regarding civil unrest. Sentiment analysis suggests a high probability of escalation.",
+          keyFindings: isCyber ? [
               "Lateral movement detected in 42% of targeted subnets.",
               "Payload delivery via encrypted social channels (Telegram/WhatsApp).",
               "Use of 'sleeper' accounts aged > 2 years to bypass standard filters."
+          ] : [
+              "Viral velocity increased by 200% in the last 24 hours.",
+              "Key influencers identified as primary nodes of propagation.",
+              "Cross-platform coordination observed between Twitter and Facebook groups."
           ],
-          indicators: [
+          indicators: isCyber ? [
               "IP: 192.168.104.22 (Malicious Node)",
               "Hash: 5d41402abc4b2a76b9719d911017c592",
               "Domain: secure-verify-login-update.com"
+          ] : [
+              "Hashtag: #FreedomNow2024",
+              "Keyword: 'Unverified Leak'",
+              "URL: truth-daily-updates.xyz"
           ],
-          tactics: [
+          tactics: isCyber ? [
             "Spearphishing campaigns targeting regional administrators",
             "DNS tunneling for C2 communications",
             "Living-off-the-land binaries (LOLBins) for persistence",
             "Typosquatting of government domains"
+          ] : [
+            "Astroturfing via fake grassroots organizations",
+            "Deepfake video dissemination",
+            "Meme warfare targeting younger demographics",
+            "Brigading of official news channels"
           ],
           activityLog: [
             "0800: Initial beacon detected from Sector 4",
             "0915: Data exfiltration attempt blocked by firewall",
             "1230: Lateral movement to backup server observed",
-            "1445: Threat actor session terminated"
+            "1445: Threat actor session terminated by countermeasures"
           ]
       };
       
@@ -996,7 +1013,7 @@ export const GeoAnalysis: React.FC = () => {
                   <div className="p-4 border-t border-white/10 bg-white/5 flex justify-between items-center">
                       <span className="text-[10px] text-slate-600 font-mono">AUTHORIZED EYES ONLY</span>
                       <button className="text-xs font-bold text-primary-400 hover:text-primary-300 flex items-center space-x-2">
-                          <FileText className="w-3 h-3" />
+                          <Download className="w-3 h-3" />
                           <span>Export PDF</span>
                       </button>
                   </div>
