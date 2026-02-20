@@ -559,7 +559,7 @@ export const GeoAnalysis: React.FC = () => {
                 <span className="text-[10px] font-bold font-mono">LIVE_FEED</span>
             </div>
             <div className="flex-1 font-mono text-xs text-slate-300 truncate">
-                <span className="animate-pulse mr-2 text-primary-500">>>></span>
+                <span className="animate-pulse mr-2 text-primary-500">{">>>"}</span>
                 {TICKER_ITEMS[tickerIndex]}
             </div>
         </div>

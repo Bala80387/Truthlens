@@ -278,7 +278,7 @@ export const RealTimeNews: React.FC = () => {
               <div className="whitespace-nowrap flex items-center space-x-8" style={{ transform: `translateX(-${tickerOffset * 2}px)` }}>
                   {news.slice(0, 15).map((item, i) => (
                       <div key={i} className="flex items-center space-x-2 text-xs font-mono text-slate-300">
-                          <span className="text-red-500">>>></span>
+                          <span className="text-red-500">{">>>"}</span>
                           <span className="font-bold text-white uppercase">{item.source}:</span>
                           <span>{item.title}</span>
                       </div>
