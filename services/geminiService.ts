@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { AnalysisResult, Classification, ViralSource, InvestigationResult } from "../types";
+import { AnalysisResult, Classification, ViralSource, InvestigationResult, NewsItem } from "../types";
 
 // Helper to sanitize JSON string from Markdown code blocks
 const cleanJsonString = (str: string): string => {
@@ -11,6 +11,115 @@ if (!apiKey) {
   throw new Error("API Key not found");
 }
 const ai = new GoogleGenAI({ apiKey });
+
+// --- FEW-SHOT LEARNING DATASETS ---
+const FEW_SHOT_EXAMPLES = {
+  Politics: `
+    **Few-Shot Training Data (Political Domain):**
+    
+    Example 1:
+    Input: "Senator Smith voted to double his own salary while cutting veteran benefits."
+    Analysis: Check legislative records (congress.gov).
+    Verdict: Misleading
+    Reasoning: Senator Smith voted for an omnibus bill that included standard cost-of-living adjustments for all federal employees, not a specific salary doubling bill. The veteran cuts were part of a separate amendment he opposed.
+    
+    Example 2:
+    Input: "Leaked audio proves the election was rigged by foreign satellites."
+    Verdict: Fake
+    Reasoning: The audio is a proven Deepfake (high spectral irregularity). No physical evidence of satellite interference exists. Physical ballots were audited.
+  `,
+  Health: `
+    **Few-Shot Training Data (Health/Medical Domain):**
+    
+    Example 1:
+    Input: "New miracle fruit cures Type 2 Diabetes in 3 days."
+    Analysis: Cross-reference with PubMed and WHO databases.
+    Verdict: Fake
+    Reasoning: Type 2 Diabetes is a chronic metabolic condition. No biological mechanism allows for a 3-day cure via fruit. This fits the 'Miracle Cure' scam pattern.
+    
+    Example 2:
+    Input: "Study shows 15% increase in heart rate variability after specific vaccine."
+    Verdict: Real
+    Reasoning: A peer-reviewed study in The Lancet noted temporary HRV changes, but concluded they were benign and transient.
+  `,
+  Finance: `
+    **Few-Shot Training Data (Financial/Market Domain):**
+    
+    Example 1:
+    Input: "Bank of America is insolvent! Withdraw cash NOW!"
+    Analysis: Check liquidity ratios, SEC filings (10-K), and FDIC status.
+    Verdict: Fake
+    Reasoning: This is a panic-inducing 'Bank Run' narrative. Recent earnings reports show strong capital buffers (CET1 ratio > 10%).
+    
+    Example 2:
+    Input: "Fed raises interest rates by 25 basis points."
+    Verdict: Real
+    Reasoning: Confirmed by official Federal Open Market Committee (FOMC) press release.
+  `,
+  General: `
+    **Few-Shot Training Data (General):**
+    Input: "The sky is green today."
+    Verdict: Fake
+    Reasoning: Atmospheric scattering makes the sky blue.
+  `
+};
+
+export const fetchLiveNews = async (category: string = 'General'): Promise<NewsItem[]> => {
+  try {
+    const prompt = `
+      You are a real-time news aggregator API.
+      Search Google News for the latest headlines related to "${category}".
+      Prioritize major international sources like The Guardian, The New York Times, Reuters, BBC, and Bloomberg.
+      
+      Return a JSON array of 5 news items.
+      Strictly follow this schema for each item:
+      {
+        "title": "Headline string",
+        "source": "Source Name (e.g. NYT, The Guardian)",
+        "category": "One of [Politics, Health, Finance, Tech, Global, Cyber]",
+        "snippet": "Brief summary of the story (max 20 words).",
+        "author": "Journalist name or 'Staff'",
+        "virality": Integer 60-99 (based on news significance),
+        "status": "Real"
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+        model: 'gemini-3-pro-preview',
+        contents: prompt,
+        config: {
+            tools: [{ googleSearch: {} }],
+            responseMimeType: "application/json"
+        }
+    });
+
+    const jsonStr = cleanJsonString(response.text || "[]");
+    const items = JSON.parse(jsonStr);
+    
+    return items.map((item: any) => ({
+        ...item,
+        id: Math.random().toString(36).substr(2, 9),
+        timestamp: Date.now()
+    }));
+
+  } catch (e) {
+      console.error("News Fetch Error:", e);
+      return [];
+  }
+};
+
+export const translateText = async (text: string, targetLanguage: string): Promise<string> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-flash-preview',
+      contents: `Translate the following text into ${targetLanguage}. Return only the translated text, no additional commentary.\n\nText: "${text}"`,
+    });
+    return response.text?.trim() || text;
+  } catch (e) {
+    console.error("Translation Error:", e);
+    return text;
+  }
+};
 
 export const generateTTS = async (text: string, voiceName: string = 'Kore'): Promise<string> => {
   try {
@@ -200,13 +309,24 @@ export const analyzeUserRisk = async (
 export const analyzeContent = async (
   content: string,
   type: 'text' | 'image' | 'url' | 'video' | 'audio',
-  imageBase64?: string
+  imageBase64?: string,
+  platform: string = 'Generic',
+  domain: 'General' | 'Politics' | 'Health' | 'Finance' = 'General'
 ): Promise<AnalysisResult> => {
+
+  // Select the appropriate Few-Shot Learning examples based on domain
+  const fewShotContext = FEW_SHOT_EXAMPLES[domain] || FEW_SHOT_EXAMPLES.General;
 
   // System instruction for Explainable AI (XAI) and Evidence-Based Verification
   const systemInstruction = `
-    You are TruthLens, a state-of-the-art cognitive security engine designed for evidence-based verification, deepfake detection, and AI-Text/Voice differentiation.
+    You are TruthLens, a state-of-the-art cognitive security engine specialized in ${domain} Analysis.
+    You use Transfer Learning principles to adapt your weights to the nuances of ${domain} misinformation.
+
+    PLATFORM CONTEXT: ${platform}
+    DOMAIN CONTEXT: ${domain}
     
+    ${fewShotContext}
+
     CORE DIRECTIVES:
     1. AI CONTENT DETECTION (Text):
        - Analyze "Perplexity" (unpredictability of text). Low perplexity = AI. High perplexity = Human.
@@ -215,7 +335,7 @@ export const analyzeContent = async (
        - Listen for "Synthetic Prosody" (unnatural evenness in pitch/tone).
        - Detect "Breath Masking" (lack of natural breath pauses).
        - Identify "Digital Artifacts" (metallic undertones in high frequencies).
-    3. EVIDENCE-BASED: Cite specific evidence or logical inconsistencies.
+    3. EVIDENCE-BASED: Cite specific evidence or logical inconsistencies relative to the ${domain} sector.
     4. EXPLAINABLE AI: Use a "Chain of Thought" approach. Premise -> Feature Extraction -> Conclusion.
     5. KNOWLEDGE GRAPH: Extract entities and relationships to build a graph representation of the claim.
 
@@ -303,7 +423,7 @@ export const analyzeContent = async (
     // --- AUDIO ANALYSIS ---
     if (type === 'audio' && imageBase64) {
         const prompt = `
-            Analyze this audio file for AI Synthesis vs Human Speech.
+            Analyze this ${platform} audio message within the ${domain} domain context.
             1. Transcribe the audio.
             2. Analyze the Audio Signal: Look for metallic artifacts, lack of breath, or perfect pitch stability (Robotic).
             3. Analyze the Text Syntax: Look for AI writing patterns (repetitive transitions, low burstiness).
@@ -334,7 +454,7 @@ export const analyzeContent = async (
     // --- IMAGE / VIDEO ANALYSIS ---
     else if ((type === 'image' || type === 'video') && imageBase64) {
       const prompt = `
-        Perform a Deepfake Forensics Analysis on this ${type === 'video' ? 'video keyframe' : 'image'}.
+        Perform a Deepfake Forensics Analysis on this ${platform} ${type === 'video' ? 'video keyframe' : 'image'} with a focus on ${domain} related imagery.
         1. Scan for GAN/Diffusion artifacts: warped backgrounds, asymmetrical facial features (eyes, ears), unnatural skin texture.
         2. Analyze lighting consistency.
         3. Extract any text and verify claims.
@@ -383,20 +503,22 @@ export const analyzeContent = async (
       
       if (type === 'url') {
         promptText = `
-          Analyze this URL: "${content}". 
+          Analyze this ${platform} URL: "${content}". 
+          Domain Focus: ${domain}.
           1. Domain Credibility & Typosquatting.
-          2. Content Analysis: Check against verified facts.
+          2. Content Analysis: Check against verified ${domain} facts.
           3. AI Detection: Estimate if the content on this page is AI-generated.
           4. Knowledge Graph: Map key entities and claims.
           Return result in JSON.
         `;
       } else {
         promptText = `
-          Analyze this text: "${content}".
+          Analyze this ${platform} content: "${content}".
+          Domain Focus: ${domain}.
           1. AI DETECTION: Calculate Perplexity and Burstiness. 
              - If sentences are uniform length and use common transition words ("Furthermore", "In conclusion"), flag as AI.
              - If text has high variance and specific nuances, flag as Human.
-          2. Fact-check claims.
+          2. Fact-check claims against ${domain} consensus.
           3. Identify logical fallacies.
           4. Knowledge Graph: Extract entities (People, Orgs, Locations) and Claims. Link them based on relationships found in text.
           Return result in JSON.
@@ -435,7 +557,8 @@ export const analyzeContent = async (
           perplexityScore: 0,
           burstinessScore: 0
       },
-      knowledgeGraph: resultJson.knowledgeGraph || { nodes: [], links: [] }
+      knowledgeGraph: resultJson.knowledgeGraph || { nodes: [], links: [] },
+      domain: domain // Attach the used domain to the result
     };
 
   } catch (error) {
@@ -451,30 +574,8 @@ export const analyzeContent = async (
       isAiGenerated: false,
       timestamp: Date.now(),
       technicalMetrics: { bertLinguisticScore: 0, lstmTemporalConsistency: 0, vitVisualArtifacts: 0, aiProbability: 0 },
-      knowledgeGraph: { nodes: [], links: [] }
+      knowledgeGraph: { nodes: [], links: [] },
+      domain: domain
     };
-  }
-};
-
-export const translateText = async (text: string, language: string): Promise<string> => {
-  try {
-    const prompt = `
-      Translate the following analysis summary into ${language}. 
-      Keep technical terms (like 'AI', 'Deepfake', 'TruthLens') in English if they are commonly used, or use appropriate localized technical terms.
-      Return ONLY the translated text. Do not add markdown or conversational filler.
-      
-      Text to translate:
-      "${text}"
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: prompt,
-    });
-
-    return response.text?.trim() || text;
-  } catch (e) {
-    console.error("Translation Error:", e);
-    return text;
   }
 };

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText } from 'lucide-react';
+import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText, Facebook, Twitter, Instagram, MessageCircle, Library, Pill, TrendingUp, Vote } from 'lucide-react';
 import { analyzeContent, runAutonomousInvestigation } from '../services/geminiService';
 import { AnalysisResult } from '../types';
 import { ResultsView } from './ResultsView';
@@ -15,6 +15,8 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<'Generic' | 'Facebook' | 'Twitter' | 'Instagram' | 'WhatsApp'>('Generic');
+  const [domain, setDomain] = useState<'General' | 'Politics' | 'Health' | 'Finance'>('General');
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDeepAgentMode, setIsDeepAgentMode] = useState(false);
@@ -87,6 +89,9 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
     if (isDeepAgentMode) {
         addLog("> Initializing Autonomous Investigative Agent...");
         await new Promise(r => setTimeout(r, 600));
+        addLog(`> Analyzing content context: ${platform}...`);
+        addLog(`> Loading domain weights: ${domain}...`);
+        await new Promise(r => setTimeout(r, 600));
         addLog("> Parsing claim semantics and entity extraction...");
         await new Promise(r => setTimeout(r, 600));
         addLog("> Connecting to Global Knowledge Graph (Google Search)...");
@@ -108,11 +113,13 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
         dataToAnalyze = frameData.split(',')[1];
       }
 
-      // 1. Standard Analysis
+      // 1. Standard Analysis with Domain Specialization
       const analysis = await analyzeContent(
         inputText, 
         activeTab,
-        dataToAnalyze
+        dataToAnalyze,
+        platform,
+        domain
       );
 
       // 2. Deep Investigation (If enabled and text/url based)
@@ -226,6 +233,21 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
     />;
   }
 
+  const platforms = [
+      { id: 'Generic', icon: <Globe className="w-4 h-4" />, label: 'Web/Generic', color: 'text-slate-400' },
+      { id: 'Facebook', icon: <Facebook className="w-4 h-4" />, label: 'Facebook', color: 'text-blue-500' },
+      { id: 'Twitter', icon: <Twitter className="w-4 h-4" />, label: 'Twitter / X', color: 'text-white' },
+      { id: 'Instagram', icon: <Instagram className="w-4 h-4" />, label: 'Instagram', color: 'text-pink-500' },
+      { id: 'WhatsApp', icon: <MessageCircle className="w-4 h-4" />, label: 'WhatsApp', color: 'text-green-500' },
+  ];
+
+  const domains = [
+      { id: 'General', label: 'General', icon: <Library className="w-4 h-4" />, color: 'text-slate-400' },
+      { id: 'Politics', label: 'Politics', icon: <Vote className="w-4 h-4" />, color: 'text-red-400' },
+      { id: 'Health', label: 'Health', icon: <Pill className="w-4 h-4" />, color: 'text-green-400' },
+      { id: 'Finance', label: 'Finance', icon: <TrendingUp className="w-4 h-4" />, color: 'text-yellow-400' },
+  ];
+
   return (
     <div className="max-w-4xl mx-auto py-6 animate-fade-in">
       <div className="text-center mb-10">
@@ -237,46 +259,86 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
         </p>
       </div>
 
-      <div className="glass-panel p-1.5 rounded-2xl mb-8 flex space-x-1 max-w-3xl mx-auto bg-black/60 overflow-x-auto">
-        {[
-            { id: 'text', label: 'Text Detect', icon: <Type className="w-4 h-4" /> },
-            { id: 'url', label: 'URL Scanner', icon: <Globe className="w-4 h-4" /> },
-            { id: 'image', label: 'Image Forensics', icon: <ImageIcon className="w-4 h-4" /> },
-            { id: 'video', label: 'Video Detect', icon: <Video className="w-4 h-4" /> },
-            { id: 'audio', label: 'Voice/Audio', icon: <Mic className="w-4 h-4" /> }
-        ].map((tab) => (
-            <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`flex-1 min-w-[120px] py-3 rounded-xl flex items-center justify-center space-x-2 font-medium transition-all duration-300 ${
-                    activeTab === tab.id 
-                    ? 'bg-surfaceHighlight text-white shadow-lg border border-white/10' 
-                    : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
-                }`}
-            >
-                {tab.icon}
-                <span>{tab.label}</span>
-            </button>
-        ))}
-      </div>
-
-      <div className="glass-panel p-8 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
+      {/* Main Container */}
+      <div className="glass-panel rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
         {/* Glow Effects */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-[80px] -mr-20 -mt-20 pointer-events-none"></div>
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -ml-20 -mb-20 pointer-events-none"></div>
 
-        <div className="relative z-10 min-h-[300px] flex flex-col">
+        {/* Top Controls Bar (Context Selector) */}
+        <div className="bg-black/40 border-b border-white/10 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            
+            {/* Input Type Selector */}
+            <div className="flex bg-black/60 rounded-xl p-1 border border-white/5 overflow-x-auto max-w-full no-scrollbar">
+                {[
+                    { id: 'text', label: 'Text', icon: <Type className="w-4 h-4" /> },
+                    { id: 'url', label: 'URL', icon: <Globe className="w-4 h-4" /> },
+                    { id: 'image', label: 'Image', icon: <ImageIcon className="w-4 h-4" /> },
+                    { id: 'video', label: 'Video', icon: <Video className="w-4 h-4" /> },
+                    { id: 'audio', label: 'Audio', icon: <Mic className="w-4 h-4" /> }
+                ].map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                            activeTab === tab.id 
+                            ? 'bg-white/10 text-white shadow-sm border border-white/10' 
+                            : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                        }`}
+                    >
+                        {tab.icon}
+                        <span>{tab.label}</span>
+                    </button>
+                ))}
+            </div>
+
+            {/* Transfer Learning Domain Selector */}
+            <div className="flex items-center space-x-2">
+                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wide hidden md:block">Model Context:</span>
+                <div className="flex bg-black/60 rounded-xl p-1 border border-white/5 overflow-x-auto max-w-full no-scrollbar">
+                    {domains.map(d => (
+                         <button
+                             key={d.id}
+                             onClick={() => setDomain(d.id as any)}
+                             className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+                                 domain === d.id 
+                                 ? 'bg-white/10 text-white shadow-sm border border-white/10' 
+                                 : 'text-slate-500 hover:text-slate-300 hover:bg-white/5'
+                             }`}
+                         >
+                             <span className={domain === d.id ? d.color : 'currentColor'}>{d.icon}</span>
+                             <span>{d.label}</span>
+                         </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+
+        <div className="relative z-10 min-h-[300px] flex flex-col p-8">
           {activeTab === 'text' && (
             <div className="space-y-4 flex-1 animate-fade-in">
-              <div className="flex justify-between items-center mb-2">
-                 <span className="text-xs text-primary-400 font-bold uppercase tracking-widest flex items-center">
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    AI Text Detector Active (Perplexity/Burstiness)
-                 </span>
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-2 gap-3">
+                 <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 overflow-x-auto max-w-full">
+                     {platforms.map(p => (
+                         <button
+                             key={p.id}
+                             onClick={() => setPlatform(p.id as any)}
+                             className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${
+                                 platform === p.id 
+                                 ? 'bg-white/10 text-white shadow-sm' 
+                                 : 'text-slate-500 hover:text-slate-300'
+                             }`}
+                         >
+                             <span className={platform === p.id ? p.color : 'currentColor'}>{p.icon}</span>
+                             <span>{p.label}</span>
+                         </button>
+                     ))}
+                 </div>
+
                  <div className="flex space-x-2">
                      <button 
                         onClick={() => setIsDeepAgentMode(!isDeepAgentMode)}
-                        className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold transition-all border ${
+                        className={`flex items-center space-x-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
                             isDeepAgentMode 
                             ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
                             : 'bg-black/40 border-slate-700 text-slate-500 hover:bg-white/5'
@@ -292,7 +354,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                   <textarea
                     value={inputText}
                     onChange={(e) => setInputText(e.target.value)}
-                    placeholder="Paste news text, blog post, or chatGPT output here for forensic analysis..."
+                    placeholder={`Paste content from ${platform} here for ${domain}-focused forensic analysis...`}
                     className="w-full h-56 bg-black/40 border border-white/10 rounded-xl p-5 text-slate-200 focus:outline-none focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 resize-none transition-all placeholder-slate-600 font-mono text-sm leading-relaxed"
                   />
                   {/* Real-time Heuristics HUD */}
@@ -333,7 +395,23 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
 
           {activeTab === 'url' && (
             <div className="space-y-6 flex-1 animate-fade-in flex flex-col justify-center">
-              <div className="flex justify-end mb-2">
+              <div className="flex justify-between items-center mb-2">
+                 <div className="flex bg-black/40 rounded-lg p-1 border border-white/10 overflow-x-auto max-w-full">
+                     {platforms.map(p => (
+                         <button
+                             key={p.id}
+                             onClick={() => setPlatform(p.id as any)}
+                             className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${
+                                 platform === p.id 
+                                 ? 'bg-white/10 text-white shadow-sm' 
+                                 : 'text-slate-500 hover:text-slate-300'
+                             }`}
+                         >
+                             <span className={platform === p.id ? p.color : 'currentColor'}>{p.icon}</span>
+                             <span>{p.label}</span>
+                         </button>
+                     ))}
+                 </div>
                  <button 
                     onClick={() => setIsDeepAgentMode(!isDeepAgentMode)}
                     className={`flex items-center space-x-2 px-3 py-1 rounded-full text-xs font-bold transition-all border ${
@@ -356,7 +434,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                         type="url"
                         value={inputText}
                         onChange={(e) => setInputText(e.target.value)}
-                        placeholder="https://example.com/article..."
+                        placeholder={`https://${platform.toLowerCase()}.com/post/...`}
                         className="w-full bg-transparent border-none text-white p-4 focus:outline-none font-mono"
                     />
                  </div>

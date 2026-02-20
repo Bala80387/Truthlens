@@ -12,6 +12,7 @@ import { ViralTracker } from './components/ViralTracker';
 import { GeoAnalysis } from './components/GeoAnalysis';
 import { RealTimeNews } from './components/RealTimeNews';
 import { ChatAssistant } from './components/ChatAssistant';
+import { MailScanner } from './components/MailScanner';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
@@ -41,6 +42,8 @@ const App: React.FC = () => {
         return <Dashboard onAnalyzeTopic={handleQuickScan} />;
       case 'news':
         return <RealTimeNews />;
+      case 'mail':
+        return <MailScanner />;
       case 'tracker':
         return <ViralTracker />;
       case 'geo':

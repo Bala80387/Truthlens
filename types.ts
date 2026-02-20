@@ -1,4 +1,4 @@
-export type View = 'dashboard' | 'analyzer' | 'tracker' | 'geo' | 'education' | 'settings' | 'history' | 'shield' | 'news';
+export type View = 'dashboard' | 'analyzer' | 'tracker' | 'geo' | 'education' | 'settings' | 'history' | 'shield' | 'news' | 'mail';
 
 export type Classification = 'Real' | 'Fake' | 'Misleading' | 'Satire' | 'Unverified';
 
@@ -62,7 +62,8 @@ export interface AnalysisResult {
   timestamp?: number;
   technicalMetrics?: TechnicalMetrics;
   investigation?: InvestigationResult;
-  knowledgeGraph?: KnowledgeGraph; // New field
+  knowledgeGraph?: KnowledgeGraph;
+  domain?: 'General' | 'Politics' | 'Health' | 'Finance'; // New field for domain specialization
 }
 
 export interface HistoryItem extends AnalysisResult {
@@ -138,4 +139,19 @@ export interface NewsItem {
     status: Classification;
     snippet: string;
     author: string;
+}
+
+export interface InboxItem {
+  id: string;
+  platform: 'Gmail' | 'Outlook' | 'Twitter' | 'LinkedIn' | 'Instagram' | 'WhatsApp';
+  sender: string;
+  senderHandle?: string;
+  subject?: string; // Optional for DMs
+  snippet: string;
+  body: string;
+  timestamp: number;
+  isRead: boolean;
+  tags: string[];
+  riskLevel: 'Safe' | 'Suspicious' | 'Malicious';
+  attachments?: Array<{ name: string; type: string; size: string }>;
 }

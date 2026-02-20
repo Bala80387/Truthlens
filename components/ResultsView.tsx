@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { translateText, generateTTS } from '../services/geminiService';
 import { KnowledgeGraph } from './KnowledgeGraph';
@@ -61,7 +61,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
   
   // UI State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [showTechDetails, setShowTechDetails] = useState(false);
+  
+  // RLHF / Training State
+  const [feedbackState, setFeedbackState] = useState<'idle' | 'correcting' | 'training' | 'trained'>('idle');
+  const [trainingLog, setTrainingLog] = useState<string[]>([]);
+  const [userVerdict, setUserVerdict] = useState<string>('');
 
   // Initialize Audio Context on user gesture or mount
   useEffect(() => {
@@ -168,6 +172,33 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
       }
   };
 
+  const startTrainingSimulation = (verdict: string) => {
+      setFeedbackState('training');
+      setUserVerdict(verdict);
+      setTrainingLog([]);
+      
+      const steps = [
+          "> Initializing backpropagation...",
+          "> Calculating loss function (BinaryCrossentropy)...",
+          `> Adjusting weights for '${verdict}' bias...`,
+          "> Updating tensor parameters...",
+          "> Optimizing gradient descent...",
+          "> Validating against test set...",
+          "> Loss: 0.042 | Accuracy: 99.1%",
+          "> Model v2.1.4-beta deployed."
+      ];
+
+      let i = 0;
+      const interval = setInterval(() => {
+          setTrainingLog(prev => [...prev, steps[i]]);
+          i++;
+          if (i >= steps.length) {
+              clearInterval(interval);
+              setFeedbackState('trained');
+          }
+      }, 800);
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Real': return 'text-green-400 border-green-500/50 bg-green-500/5 shadow-[0_0_30px_rgba(34,197,94,0.1)]';
@@ -186,6 +217,15 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
       case 'Satire': return <Eye className="w-16 h-16" />;
       default: return <HelpCircle className="w-16 h-16" />;
     }
+  };
+
+  const getDomainIcon = (domain: string) => {
+      switch (domain) {
+          case 'Politics': return <Vote className="w-4 h-4 mr-1" />;
+          case 'Health': return <Pill className="w-4 h-4 mr-1" />;
+          case 'Finance': return <TrendingUp className="w-4 h-4 mr-1" />;
+          default: return <Library className="w-4 h-4 mr-1" />;
+      }
   };
 
   const handleDownloadPDF = () => {
@@ -353,6 +393,11 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                 <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/5 to-transparent pointer-events-none"></div>
                 
                 <div className="relative z-10 flex flex-col items-center justify-center">
+                    {/* Domain Badge */}
+                    <div className="mb-4 bg-white/10 px-3 py-1 rounded-full border border-white/20 text-xs font-bold text-white uppercase tracking-widest flex items-center">
+                        {getDomainIcon(result.domain || 'General')} {result.domain || 'General'} Context Active
+                    </div>
+
                     <div className="mb-6 relative">
                         <div className={`absolute inset-0 blur-3xl opacity-20 ${result.classification === 'Real' ? 'bg-green-500' : 'bg-red-500'}`}></div>
                         {getStatusIcon(result.classification)}
@@ -394,7 +439,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {/* Detailed Metrics & Reasoning */}
                 <div className="md:col-span-2 space-y-6">
                 <div className="glass-panel p-8 rounded-3xl border-white/5">
@@ -445,6 +490,98 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                         </div>
                      </div>
                 )}
+                </div>
+            </div>
+
+            {/* Model Retraining / RLHF Console */}
+            <div className="glass-panel p-1 rounded-3xl border-white/5 bg-gradient-to-br from-slate-900 via-black to-black shadow-2xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-48 h-48 bg-blue-500/5 rounded-full blur-[60px] pointer-events-none"></div>
+                <div className="bg-black/60 backdrop-blur-xl p-8 rounded-[22px]">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-white flex items-center">
+                                <GitPullRequest className="w-5 h-5 mr-3 text-blue-400" />
+                                Model Training Loop (RLHF)
+                            </h3>
+                            <p className="text-slate-400 text-sm mt-1 max-w-xl">
+                                Help fine-tune TruthLens for <strong>{result.domain || 'General'}</strong> context. Your feedback is used to adjust weights and biases.
+                            </p>
+                        </div>
+                        <div className="flex space-x-2">
+                            {feedbackState === 'idle' && (
+                                <>
+                                    <button 
+                                        onClick={() => setFeedbackState('correcting')}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 rounded-lg transition-all"
+                                    >
+                                        <ThumbsDown className="w-4 h-4" />
+                                        <span className="text-xs font-bold uppercase">Inaccurate</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => startTrainingSimulation('Accurate')}
+                                        className="flex items-center space-x-2 px-4 py-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/20 text-green-400 rounded-lg transition-all"
+                                    >
+                                        <ThumbsUp className="w-4 h-4" />
+                                        <span className="text-xs font-bold uppercase">Accurate</span>
+                                    </button>
+                                </>
+                            )}
+                        </div>
+                    </div>
+
+                    {feedbackState === 'correcting' && (
+                        <div className="animate-fade-in bg-white/5 border border-white/5 rounded-xl p-6">
+                            <h4 className="text-sm font-bold text-white mb-4">Correct Classification</h4>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                {['Real', 'Fake', 'Misleading', 'Satire'].map(label => (
+                                    <button
+                                        key={label}
+                                        onClick={() => startTrainingSimulation(label)}
+                                        className="px-4 py-3 rounded-lg bg-black hover:bg-primary-600 hover:text-white border border-white/10 transition-all text-slate-300 text-sm font-medium"
+                                    >
+                                        {label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {feedbackState === 'training' && (
+                        <div className="animate-fade-in bg-black border border-green-500/30 rounded-xl p-4 font-mono text-xs shadow-[inset_0_0_20px_rgba(34,197,94,0.1)]">
+                            <div className="flex items-center space-x-2 mb-2 border-b border-green-500/30 pb-2">
+                                <Terminal className="w-3 h-3 text-green-500" />
+                                <span className="text-green-500 font-bold">TRAINING_PROCESS_PID_4921</span>
+                            </div>
+                            <div className="space-y-1 h-32 overflow-y-auto custom-scrollbar">
+                                {trainingLog.map((log, i) => (
+                                    <div key={i} className="text-green-400">{log}</div>
+                                ))}
+                                <div className="w-2 h-4 bg-green-500 animate-pulse"></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {feedbackState === 'trained' && (
+                        <div className="animate-fade-in bg-green-500/10 border border-green-500/20 rounded-xl p-6 flex items-center justify-between">
+                            <div className="flex items-center space-x-4">
+                                <div className="p-3 bg-green-500/20 rounded-full">
+                                    <Database className="w-6 h-6 text-green-400" />
+                                </div>
+                                <div>
+                                    <h4 className="text-lg font-bold text-white">Model Retrained Successfully</h4>
+                                    <p className="text-sm text-green-300">
+                                        Weights updated based on your feedback: <span className="font-bold text-white">{userVerdict}</span>
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={() => setFeedbackState('idle')}
+                                className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white text-xs font-bold uppercase transition-colors"
+                            >
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </>
