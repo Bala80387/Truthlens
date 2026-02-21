@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp, ShieldCheck, Layers } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { translateText, generateTTS } from '../services/geminiService';
 import { KnowledgeGraph } from './KnowledgeGraph';
@@ -442,11 +442,100 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 {/* Detailed Metrics & Reasoning */}
                 <div className="md:col-span-2 space-y-6">
+                
+                {/* Claim-Level Verification */}
+                <div className="glass-panel p-8 rounded-3xl border-white/5">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                        <ShieldCheck className="w-5 h-5 mr-3 text-primary-400" />
+                        Claim-Level Verification
+                    </h3>
+                    <div className="space-y-4">
+                        {result.factChecks && result.factChecks.length > 0 ? (
+                            result.factChecks.map((check, idx) => (
+                                <div key={idx} className="bg-black/40 border border-white/5 rounded-xl p-4">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="text-sm font-semibold text-white flex-1 mr-4">"{check.claim}"</h4>
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase border ${
+                                            check.status === 'Supported' ? 'bg-green-500/10 text-green-400 border-green-500/20' :
+                                            check.status === 'Contradicted' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                            'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                                        }`}>
+                                            {check.status}
+                                        </span>
+                                    </div>
+                                    <div className="text-xs text-slate-400 mb-2">
+                                        <span className="font-bold text-slate-500">EVIDENCE:</span> {check.evidence?.[0] || "Analysis pending..."}
+                                    </div>
+                                    {check.sources && check.sources.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mt-2">
+                                            {check.sources.map((src, i) => (
+                                                <span key={i} className="flex items-center text-[10px] text-primary-400 bg-primary-500/5 px-2 py-0.5 rounded border border-primary-500/10">
+                                                    <Globe className="w-3 h-3 mr-1" /> {src}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-slate-500 text-sm italic">No specific claims extracted for verification.</div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Multimodal Fusion (If applicable) */}
+                {result.multimodal && (
+                    <div className="glass-panel p-8 rounded-3xl border-white/5 bg-gradient-to-br from-purple-900/10 to-black">
+                        <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                            <Layers className="w-5 h-5 mr-3 text-purple-400" />
+                            Multimodal Fusion Analysis
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                                <div className="text-xs text-slate-500 uppercase font-bold mb-1">Text-Image Consistency</div>
+                                <div className="text-2xl font-black text-white">{result.multimodal.textImageConsistency}%</div>
+                                <div className="w-full bg-slate-800 h-1 mt-2 rounded-full overflow-hidden">
+                                    <div className="bg-purple-500 h-full" style={{width: `${result.multimodal.textImageConsistency}%`}}></div>
+                                </div>
+                            </div>
+                            <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                                <div className="text-xs text-slate-500 uppercase font-bold mb-1">Fusion Score</div>
+                                <div className="text-2xl font-black text-white">{result.multimodal.fusionScore}/100</div>
+                            </div>
+                        </div>
+                        <div className="flex gap-4">
+                             <div className={`flex-1 p-3 rounded-lg border ${result.multimodal.captionMatch ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'} text-xs font-bold flex items-center justify-center`}>
+                                {result.multimodal.captionMatch ? <Check className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
+                                Caption Match
+                             </div>
+                             <div className={`flex-1 p-3 rounded-lg border ${!result.multimodal.manipulationDetected ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'} text-xs font-bold flex items-center justify-center`}>
+                                {!result.multimodal.manipulationDetected ? <Check className="w-4 h-4 mr-2" /> : <AlertTriangle className="w-4 h-4 mr-2" />}
+                                No Manipulation
+                             </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="glass-panel p-8 rounded-3xl border-white/5">
                     <h3 className="text-xl font-bold text-white mb-6 flex items-center">
                     <ScanFace className="w-5 h-5 mr-3 text-primary-400" />
                     Explainable AI Reasoning
                     </h3>
+                    
+                    {/* Influential Words Cloud */}
+                    {result.influentialWords && result.influentialWords.length > 0 && (
+                        <div className="mb-6 pb-6 border-b border-white/5">
+                            <h4 className="text-xs font-bold text-slate-500 uppercase mb-3">Influential Tokens</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {result.influentialWords.map((word, i) => (
+                                    <span key={i} className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 text-xs border border-blue-500/20 font-mono">
+                                        {word}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="relative border-l-2 border-slate-800 ml-4 space-y-8 py-2">
                     {result.reasoning.map((reason, idx) => (
                         <div key={idx} className="relative pl-8">

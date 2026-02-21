@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText, Facebook, Twitter, Instagram, MessageCircle, Library, Pill, TrendingUp, Vote } from 'lucide-react';
 import { analyzeContent, runAutonomousInvestigation } from '../services/geminiService';
 import { AnalysisResult } from '../types';
@@ -8,6 +9,19 @@ interface AnalyzerProps {
   initialText?: string;
   onAnalysisComplete: (result: AnalysisResult, content: string, type: 'text' | 'image' | 'url' | 'video' | 'audio') => void;
 }
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+};
 
 export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisComplete }) => {
   const [activeTab, setActiveTab] = useState<'text' | 'image' | 'url' | 'video' | 'audio'>('text');

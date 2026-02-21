@@ -49,6 +49,7 @@ export const SocialShield: React.FC = () => {
   
   // Shield Status
   const [shieldActive, setShieldActive] = useState(true);
+  const [safeMode, setSafeMode] = useState(true);
   const [shieldIntegrity, setShieldIntegrity] = useState(100);
   const [threatsBlocked, setThreatsBlocked] = useState(12);
   
@@ -132,6 +133,16 @@ export const SocialShield: React.FC = () => {
       }
       setDefenseNodes(nodes);
   }, []);
+
+  // Safe Mode Effect
+  useEffect(() => {
+      setPosts(prev => prev.map(p => {
+          if (p.status === 'Fake' || p.status === 'Misleading') {
+              return { ...p, isQuarantined: safeMode };
+          }
+          return p;
+      }));
+  }, [safeMode]);
 
   // Defense Grid Game Loop
   useEffect(() => {
@@ -269,7 +280,7 @@ export const SocialShield: React.FC = () => {
       botProb: 0,
       propagationRate: 'Low',
       networkCluster: 'Organic',
-      isQuarantined: false
+      isQuarantined: safeMode && (status === 'Fake' || status === 'Misleading')
     };
     setPosts([newPost, ...posts]);
     setDraft('');
@@ -353,6 +364,19 @@ export const SocialShield: React.FC = () => {
                      <span className="text-lg font-bold text-green-400">{threatsBlocked}</span>
                      <ShieldAlert className="w-4 h-4 text-green-500" />
                  </div>
+             </div>
+
+             <div className="h-8 w-px bg-white/10"></div>
+
+             {/* Safe Mode Toggle */}
+             <div className="flex flex-col items-end px-2">
+                 <span className="text-[10px] text-slate-500 uppercase font-bold">Safe Mode</span>
+                 <button 
+                    onClick={() => setSafeMode(!safeMode)}
+                    className={`mt-1 w-10 h-5 rounded-full p-0.5 transition-colors ${safeMode ? 'bg-green-500' : 'bg-slate-700'}`}
+                 >
+                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${safeMode ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                 </button>
              </div>
 
              <div className="h-8 w-px bg-white/10"></div>
@@ -799,6 +823,38 @@ export const SocialShield: React.FC = () => {
                            <span>{reason}</span>
                         </div>
                      ))}
+                     
+                     {/* Claim Verification in Warning */}
+                     {warning.factChecks && warning.factChecks.length > 0 && (
+                        <div className="mt-4 pt-4 border-t border-white/10">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Claim Verification</h4>
+                            <div className="space-y-2">
+                                {warning.factChecks.slice(0, 2).map((check, i) => (
+                                    <div key={i} className="bg-white/5 p-2 rounded border border-white/5 text-xs">
+                                        <div className="flex justify-between mb-1">
+                                            <span className="text-white font-semibold truncate w-3/4">"{check.claim}"</span>
+                                            <span className={`text-[9px] px-1 rounded uppercase font-bold ${
+                                                check.status === 'Supported' ? 'text-green-400 bg-green-500/10' : 
+                                                check.status === 'Contradicted' ? 'text-red-400 bg-red-500/10' : 'text-slate-400'
+                                            }`}>{check.status}</span>
+                                        </div>
+                                        <div className="text-slate-500 truncate">{check.evidence?.[0]}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                     )}
+
+                     {/* Multimodal Warning */}
+                     {warning.multimodal && warning.multimodal.manipulationDetected && (
+                        <div className="mt-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-center space-x-3">
+                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                            <div>
+                                <div className="text-sm font-bold text-red-400">Image Manipulation Detected</div>
+                                <div className="text-xs text-red-300/70">Fusion Score: {warning.multimodal.fusionScore}/100</div>
+                            </div>
+                        </div>
+                     )}
                   </div>
 
                   <div className="flex items-center gap-4">

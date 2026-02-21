@@ -185,8 +185,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
                     <Activity className="w-5 h-5 text-primary-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white leading-none">Prediction vs Mitigation</h3>
-                    <span className="text-xs text-slate-500">AI Forecasting Model v2.1</span>
+                    <h3 className="text-lg font-bold text-white leading-none">Viral Misinformation Growth Forecast</h3>
+                    <span className="text-xs text-slate-500">AI Prediction vs Real-time Spread</span>
                   </div>
                </div>
                <div className="flex items-center space-x-4 text-xs">
@@ -346,8 +346,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onAnalyzeTopic }) => {
                     <Terminal className="w-5 h-5 text-blue-400" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-white leading-none">Logic Stream</h3>
-                    <span className="text-xs text-slate-500">Live Inference Feed</span>
+                    <h3 className="text-lg font-bold text-white leading-none">Live Threat Intelligence</h3>
+                    <span className="text-xs text-slate-500">Real-time Misinformation Feed</span>
                   </div>
                </div>
                <div className="flex items-center space-x-2">

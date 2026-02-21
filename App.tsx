@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { View, AnalysisResult, HistoryItem } from './types';
 import { Navigation } from './components/Navigation';
 import { Dashboard } from './components/Dashboard';
@@ -59,7 +60,6 @@ const App: React.FC = () => {
         return <History 
           history={history} 
           onSelectHistory={(item) => {
-             // For now, simple view, ideally would restore ResultView state
              alert(`Viewing logs for ID: ${item.id}. Detailed history replay coming in v2.2`);
           }} 
           onClearHistory={() => setHistory([])}
@@ -94,7 +94,17 @@ const App: React.FC = () => {
         </div>
 
         <div className="relative z-10 container mx-auto px-4 py-24 md:py-12 md:px-8 max-w-7xl">
-          {renderView()}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentView}
+              initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+              animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+              transition={{ duration: 0.3, ease: 'easeOut' }}
+            >
+              {renderView()}
+            </motion.div>
+          </AnimatePresence>
         </div>
       </main>
       

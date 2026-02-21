@@ -50,12 +50,27 @@ export interface KnowledgeGraph {
   links: GraphLink[];
 }
 
+export interface ClaimVerification {
+  claim: string;
+  status: 'Supported' | 'Contradicted' | 'Not Verified';
+  confidence: number;
+  evidence: string[];
+  sources: string[];
+}
+
+export interface MultimodalFusion {
+  textImageConsistency: number; // 0-100
+  captionMatch: boolean;
+  manipulationDetected: boolean;
+  fusionScore: number; // Combined authenticity score
+}
+
 export interface AnalysisResult {
   classification: Classification;
   confidence: number;
   summary: string;
   reasoning: string[];
-  factChecks: Array<{ claim: string; verdict: string; source: string }>;
+  factChecks: ClaimVerification[]; // Enhanced from simple object
   emotionalTriggers: string[];
   viralityScore: number;
   isAiGenerated: boolean;
@@ -63,7 +78,9 @@ export interface AnalysisResult {
   technicalMetrics?: TechnicalMetrics;
   investigation?: InvestigationResult;
   knowledgeGraph?: KnowledgeGraph;
-  domain?: 'General' | 'Politics' | 'Health' | 'Finance'; // New field for domain specialization
+  domain?: 'General' | 'Politics' | 'Health' | 'Finance';
+  multimodal?: MultimodalFusion; // New field
+  influentialWords?: string[]; // For Explainable AI
 }
 
 export interface HistoryItem extends AnalysisResult {
