@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText, Facebook, Twitter, Instagram, MessageCircle, Library, Pill, TrendingUp, Vote } from 'lucide-react';
+import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText, Facebook, Twitter, Instagram, MessageCircle, Library, Pill, TrendingUp, Vote, ScanFace } from 'lucide-react';
 import { analyzeContent, runAutonomousInvestigation } from '../services/geminiService';
 import { AnalysisResult } from '../types';
 import { ResultsView } from './ResultsView';
@@ -525,10 +525,16 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                 ) : (
                   <>
                     <div className="w-16 h-16 rounded-full bg-slate-900/80 flex items-center justify-center mb-4 border border-white/5 group-hover:scale-110 transition-transform shadow-[0_0_20px_rgba(0,0,0,0.5)]">
-                        {activeTab === 'image' ? <ImageIcon className="w-6 h-6 text-slate-400 group-hover:text-primary-400" /> : <Video className="w-6 h-6 text-slate-400 group-hover:text-primary-400" />}
+                        {activeTab === 'image' ? <ScanFace className="w-6 h-6 text-slate-400 group-hover:text-primary-400" /> : <Video className="w-6 h-6 text-slate-400 group-hover:text-primary-400" />}
                     </div>
-                    <p className="text-slate-300 font-medium text-lg">Upload {activeTab === 'image' ? 'Image' : 'Video'}</p>
-                    <p className="text-xs text-slate-500 mt-2">Max 10MB - GAN/Diffusion Forensics</p>
+                    <p className="text-slate-300 font-medium text-lg">
+                        {activeTab === 'image' ? 'Upload Image for Deepfake Scan' : 'Upload Video for Keyframe Analysis'}
+                    </p>
+                    <p className="text-xs text-slate-500 mt-2 max-w-xs text-center">
+                        {activeTab === 'image' 
+                            ? 'Detects GAN/Diffusion artifacts, lighting inconsistencies, and visual anomalies.' 
+                            : 'Extracts keyframes to analyze for manipulation and synthetic generation.'}
+                    </p>
                   </>
                 )}
                 <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />

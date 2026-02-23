@@ -529,10 +529,11 @@ export const analyzeContent = async (
     else if ((type === 'image' || type === 'video') && imageBase64) {
       const prompt = `
         Perform a Deepfake Forensics Analysis on this ${platform} ${type === 'video' ? 'video keyframe' : 'image'} with a focus on ${domain} related imagery.
-        1. Scan for GAN/Diffusion artifacts: warped backgrounds, asymmetrical facial features (eyes, ears), unnatural skin texture.
-        2. Analyze lighting consistency.
-        3. Extract any text and verify claims.
-        4. Build a Knowledge Graph of identified people, objects, and text entities.
+        1. Scan for GAN/Diffusion artifacts: warped backgrounds, asymmetrical facial features (eyes, ears), unnatural skin texture, and inconsistent shadows.
+        2. Perform Visual Anomaly Analysis: Identify pixel-level irregularities, compression artifacts, or signs of digital manipulation (cloning, splicing).
+        3. Analyze lighting consistency and reflections.
+        4. Extract any text and verify claims.
+        5. Build a Knowledge Graph of identified people, objects, and text entities.
         
         Return a JSON object matching the schema. 
         In 'reasoning', list specific visual artifacts found.
