@@ -5,32 +5,63 @@ import path from 'path';
 const app = express();
 const PORT = 3000;
 
+// Trust proxy is required for correct protocol detection behind nginx/load balancers
+app.set('trust proxy', true);
+
 // Middleware to parse JSON bodies
 app.use(express.json());
 
 // --- OAuth Routes ---
 
-app.get('/api/auth/google/url', (req, res) => {
-  const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-  const redirectUri = `${appUrl}/auth/callback`;
+// Helper to determine the correct app URL
+const getAppUrl = (req: express.Request) => {
+  // 1. Check for client-provided origin (most reliable for client-side initiated flows)
+  if (req.query.origin && typeof req.query.origin === 'string') {
+    return req.query.origin;
+  }
+
+  // 2. Check environment variable
+  if (process.env.APP_URL) return process.env.APP_URL;
   
-  const params = new URLSearchParams({
-    client_id: process.env.GOOGLE_CLIENT_ID || '',
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: 'openid email profile',
-    access_type: 'offline',
-    prompt: 'consent'
+  // 3. Fallback to request headers for dynamic environments
+  const host = req.get('host');
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  return `${proto}://${host}`;
+};
+
+// Expose Client ID to frontend
+app.get('/api/auth/config', (req, res) => {
+  res.json({ 
+    googleClientId: process.env.GOOGLE_CLIENT_ID || '',
   });
-  
-  const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-  res.json({ url: authUrl });
 });
 
 app.get('/auth/callback', async (req, res) => {
-  const { code } = req.query;
-  const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
-  const redirectUri = `${appUrl}/auth/callback`;
+  const { code, state } = req.query;
+  
+  let redirectUri = '';
+  
+  // Try to recover the redirect_uri from the state parameter
+  if (state && typeof state === 'string') {
+      try {
+          // Decode state (base64)
+          const stateJson = Buffer.from(state, 'base64').toString('utf-8');
+          const stateData = JSON.parse(stateJson);
+          if (stateData.redirectUri) {
+              redirectUri = stateData.redirectUri;
+              console.log('Recovered redirect_uri from state:', redirectUri);
+          }
+      } catch (e) {
+          console.error('Failed to parse state parameter:', e);
+      }
+  }
+
+  // Fallback if state is missing or invalid
+  if (!redirectUri) {
+      const appUrl = getAppUrl(req);
+      redirectUri = `${appUrl}/auth/callback`;
+      console.log('Fallback redirect_uri:', redirectUri);
+  }
 
   if (!code) {
     return res.status(400).send('No code provided');
