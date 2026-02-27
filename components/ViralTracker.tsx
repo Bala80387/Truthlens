@@ -8,7 +8,7 @@ import {
   Smartphone, Globe, Share2, Users, Radar, Target, Cpu, Eye, MessageSquare, 
   Wifi, BarChart4, AlertOctagon, CornerDownRight, Brain, Twitter, FileText
 } from 'lucide-react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RechartsRadar } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, BarChart, Bar, Cell, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar as RechartsRadar, LineChart, Line, PieChart, Pie, Legend } from 'recharts';
 
 // --- MOCK DATA GENERATORS ---
 
@@ -74,6 +74,39 @@ export const ViralTracker: React.FC = () => {
 
   const [actionStatus, setActionStatus] = useState<'idle' | 'deploying' | 'active'>('idle');
   const [responseLog, setResponseLog] = useState<string[]>([]);
+
+  // Global Analytics State
+  const [globalStats, setGlobalStats] = useState<{
+      velocityData: any[];
+      sourceData: any[];
+      narrativeData: any[];
+  } | null>(null);
+
+  useEffect(() => {
+      // Generate initial global stats
+      const stats = {
+          velocityData: Array.from({ length: 12 }, (_, i) => ({
+              time: `${i * 2}:00`,
+              Political: Math.floor(Math.random() * 500) + 100,
+              Health: Math.floor(Math.random() * 300) + 50,
+              Financial: Math.floor(Math.random() * 200) + 20,
+          })),
+          sourceData: [
+              { name: 'Bot Networks', value: 45, color: '#ef4444' },
+              { name: 'State Actors', value: 25, color: '#f97316' },
+              { name: 'Organic', value: 20, color: '#22c55e' },
+              { name: 'Unknown', value: 10, color: '#64748b' },
+          ],
+          narrativeData: [
+              { name: 'Election Fraud', volume: 12500 },
+              { name: 'Vaccine Chip', volume: 8900 },
+              { name: 'Market Crash', volume: 6200 },
+              { name: 'Alien Contact', volume: 4500 },
+              { name: 'Climate Hoax', volume: 3100 },
+          ]
+      };
+      setGlobalStats(stats);
+  }, []);
 
   // Initial Data Load
   useEffect(() => {
@@ -316,13 +349,114 @@ export const ViralTracker: React.FC = () => {
         <div className="col-span-12 lg:col-span-8 xl:col-span-9 flex flex-col gap-6 overflow-y-auto pr-1">
            
            {!selectedTrend ? (
-               <div className="flex-1 glass-panel rounded-3xl border-white/5 bg-black/40 flex flex-col items-center justify-center text-slate-600 relative overflow-hidden">
-                   <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.01)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.01)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
-                   <div className="w-32 h-32 rounded-full border border-white/5 flex items-center justify-center mb-6 relative z-10">
-                        <Radar className="w-16 h-16 opacity-20 animate-[spin_10s_linear_infinite]" />
+               <div className="flex-1 glass-panel rounded-3xl border-white/5 bg-black/40 flex flex-col p-6 animate-fade-in overflow-y-auto custom-scrollbar">
+                   <div className="flex items-center justify-between mb-6">
+                       <div>
+                           <h2 className="text-xl font-bold text-white flex items-center">
+                               <Globe className="w-5 h-5 mr-2 text-primary-400" />
+                               Global Misinformation Landscape
+                           </h2>
+                           <p className="text-sm text-slate-400 mt-1">Real-time analysis of active disinformation campaigns and vectors.</p>
+                       </div>
+                       <div className="flex items-center space-x-2 bg-white/5 px-3 py-1.5 rounded-lg border border-white/10">
+                           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                           <span className="text-xs font-mono text-slate-300">SYSTEM ONLINE</span>
+                       </div>
                    </div>
-                   <h2 className="text-xl font-bold text-slate-400 relative z-10">Waiting for Target Selection</h2>
-                   <p className="text-sm text-slate-600 mt-2 relative z-10">Select a viral vector to initiate forensic analysis.</p>
+
+                   {globalStats && (
+                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-1 min-h-0">
+                           {/* Trend Velocity Chart */}
+                           <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col min-h-[300px]">
+                               <h3 className="text-sm font-bold text-white mb-4 flex items-center">
+                                   <TrendingUp className="w-4 h-4 mr-2 text-blue-400" />
+                                   Category Velocity (24h)
+                               </h3>
+                               <div className="flex-1 w-full h-full min-h-[200px]">
+                                   <ResponsiveContainer width="100%" height="100%">
+                                       <LineChart data={globalStats.velocityData}>
+                                           <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+                                           <XAxis dataKey="time" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                                           <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                                           <Tooltip 
+                                               contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                                               itemStyle={{ color: '#f8fafc' }}
+                                           />
+                                           <Legend />
+                                           <Line type="monotone" dataKey="Political" stroke="#ef4444" strokeWidth={2} dot={false} />
+                                           <Line type="monotone" dataKey="Health" stroke="#22c55e" strokeWidth={2} dot={false} />
+                                           <Line type="monotone" dataKey="Financial" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                                       </LineChart>
+                                   </ResponsiveContainer>
+                               </div>
+                           </div>
+
+                           {/* Source Distribution Chart */}
+                           <div className="bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col min-h-[300px]">
+                               <h3 className="text-sm font-bold text-white mb-4 flex items-center">
+                                   <Users className="w-4 h-4 mr-2 text-purple-400" />
+                                   Source Attribution
+                               </h3>
+                               <div className="flex-1 w-full h-full min-h-[200px] flex items-center justify-center relative">
+                                   <ResponsiveContainer width="100%" height="100%">
+                                       <PieChart>
+                                           <Pie
+                                               data={globalStats.sourceData}
+                                               cx="50%"
+                                               cy="50%"
+                                               innerRadius={60}
+                                               outerRadius={80}
+                                               paddingAngle={5}
+                                               dataKey="value"
+                                           >
+                                               {globalStats.sourceData.map((entry: any, index: number) => (
+                                                   <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
+                                               ))}
+                                           </Pie>
+                                           <Tooltip 
+                                               contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                                               itemStyle={{ color: '#f8fafc' }}
+                                           />
+                                           <Legend verticalAlign="bottom" height={36}/>
+                                       </PieChart>
+                                   </ResponsiveContainer>
+                                   {/* Center Text */}
+                                   <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                       <div className="text-center">
+                                           <span className="block text-2xl font-black text-white">45%</span>
+                                           <span className="text-[10px] text-slate-500 uppercase font-bold">Bot Traffic</span>
+                                       </div>
+                                   </div>
+                               </div>
+                           </div>
+
+                           {/* Top Narratives Bar Chart */}
+                           <div className="col-span-1 lg:col-span-2 bg-black/40 border border-white/5 rounded-2xl p-4 flex flex-col min-h-[300px]">
+                               <h3 className="text-sm font-bold text-white mb-4 flex items-center">
+                                   <BarChart4 className="w-4 h-4 mr-2 text-orange-400" />
+                                   Top Active Narratives by Volume
+                               </h3>
+                               <div className="flex-1 w-full h-full min-h-[200px]">
+                                   <ResponsiveContainer width="100%" height="100%">
+                                       <BarChart data={globalStats.narrativeData} layout="vertical" margin={{ left: 20, right: 20 }}>
+                                           <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} horizontal={false} />
+                                           <XAxis type="number" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                                           <YAxis dataKey="name" type="category" stroke="#94a3b8" fontSize={11} tickLine={false} axisLine={false} width={100} />
+                                           <Tooltip 
+                                               cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                               contentStyle={{ backgroundColor: '#0f172a', borderColor: '#1e293b', color: '#f8fafc' }}
+                                           />
+                                           <Bar dataKey="volume" fill="#3b82f6" radius={[0, 4, 4, 0]} barSize={20}>
+                                               {globalStats.narrativeData.map((entry: any, index: number) => (
+                                                   <Cell key={`cell-${index}`} fill={index === 0 ? '#ef4444' : '#3b82f6'} />
+                                               ))}
+                                           </Bar>
+                                       </BarChart>
+                                   </ResponsiveContainer>
+                               </div>
+                           </div>
+                       </div>
+                   )}
                </div>
            ) : isTracing ? (
                <div className="flex-1 glass-panel rounded-3xl border-white/5 bg-black/40 flex flex-col items-center justify-center relative overflow-hidden">

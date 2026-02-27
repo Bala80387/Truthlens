@@ -400,6 +400,9 @@ export const analyzeContent = async (
        - Identify "Influential Words" that sway the sentiment or credibility.
        - Use a "Chain of Thought" approach.
     5. KNOWLEDGE GRAPH: Extract entities and relationships.
+    6. SUMMARY GENERATION:
+       - Provide a concise summary (max 2 sentences).
+       - Explicitly highlight key misinformation points, anomalies, or manipulative tactics found.
 
     CLASSIFICATION RULES:
     - Real: Corroborated by reliable sources / Organic human content.
@@ -415,7 +418,10 @@ export const analyzeContent = async (
     properties: {
       classification: { type: Type.STRING, enum: ['Real', 'Fake', 'Misleading', 'Satire', 'Unverified'] },
       confidence: { type: Type.INTEGER, description: "Confidence score between 0 and 100" },
-      summary: { type: Type.STRING },
+      summary: { 
+        type: Type.STRING, 
+        description: "A concise summary (max 2 sentences) specifically highlighting key misinformation points, anomalies, or manipulative tactics found." 
+      },
       reasoning: { 
         type: Type.ARRAY, 
         items: { type: Type.STRING },
@@ -537,6 +543,7 @@ export const analyzeContent = async (
         
         Return a JSON object matching the schema. 
         In 'reasoning', list specific visual artifacts found.
+        In 'summary', provide a concise (max 2 sentences) overview of the key visual anomalies or deepfake indicators detected.
         Set 'isAiGenerated' to true if artifacts are significant.
       `;
       

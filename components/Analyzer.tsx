@@ -40,7 +40,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
   // Real-time Heuristics
-  const [metrics, setMetrics] = useState({ complexity: 0, urgency: 0, noise: 0 });
+  const [metrics, setMetrics] = useState({ complexity: 0, urgency: 0, noise: 0, synthetic: 0 });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -59,7 +59,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   // Heuristic Analysis Effect
   useEffect(() => {
     if (!inputText) {
-        setMetrics({ complexity: 0, urgency: 0, noise: 0 });
+        setMetrics({ complexity: 0, urgency: 0, noise: 0, synthetic: 0 });
         return;
     }
     const words = inputText.trim().split(/\s+/);
@@ -69,10 +69,26 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
     const caps = words.filter(w => w.length > 1 && w === w.toUpperCase()).length;
     const special = (inputText.match(/[^a-zA-Z0-9\s]/g) || []).length;
     
+    // Simple Synthetic/AI Heuristics
+    const aiPhrases = ["in summary", "it is important to note", "furthermore", "moreover", "in conclusion", "as an ai", "delve", "tapestry", "landscape"];
+    const aiPhraseCount = aiPhrases.reduce((acc, phrase) => acc + (inputText.toLowerCase().includes(phrase) ? 1 : 0), 0);
+    
+    // Sentence length variance (AI tends to be more uniform)
+    const sentences = inputText.split(/[.!?]+/);
+    const sentenceLengths = sentences.map(s => s.trim().split(/\s+/).length).filter(l => l > 0);
+    const avgSentLen = sentenceLengths.reduce((a, b) => a + b, 0) / (sentenceLengths.length || 1);
+    const variance = sentenceLengths.reduce((a, b) => a + Math.pow(b - avgSentLen, 2), 0) / (sentenceLengths.length || 1);
+    
+    // Low variance + high AI phrase count = High Synthetic Score
+    let syntheticScore = (aiPhraseCount * 15);
+    if (sentenceLengths.length > 3 && variance < 10) syntheticScore += 30;
+    if (avgLen > 5 && avgLen < 7) syntheticScore += 10; // AI tends to have average word length around 5-6 chars
+
     setMetrics({
         complexity: Math.min(100, Math.max(10, avgLen * 12)), // Higher avg length = higher complexity
         urgency: Math.min(100, (caps * 5) + (inputText.match(/!/g) || []).length * 10), // Caps and ! increase urgency
-        noise: Math.min(100, (special * 2) + (words.length < 5 ? 50 : 0)) // Special chars or very short text
+        noise: Math.min(100, (special * 2) + (words.length < 5 ? 50 : 0)), // Special chars or very short text
+        synthetic: Math.min(100, syntheticScore)
     });
   }, [inputText]);
 
@@ -387,6 +403,13 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                                   <div className={`h-full transition-all duration-300 ${metrics.urgency > 50 ? 'bg-red-500' : 'bg-yellow-400'}`} style={{width: `${metrics.urgency}%`}}></div>
                               </div>
                               <span className="text-[9px] text-slate-400 font-mono">URGENCY</span>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <Cpu className="w-3 h-3 text-purple-400" />
+                              <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-400 transition-all duration-300" style={{width: `${metrics.synthetic}%`}}></div>
+                              </div>
+                              <span className="text-[9px] text-slate-400 font-mono">AI-LIKELIHOOD</span>
                           </div>
                       </div>
                   )}

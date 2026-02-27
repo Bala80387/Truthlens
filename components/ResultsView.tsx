@@ -483,6 +483,85 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                     </div>
                 </div>
 
+                {/* Technical Forensics (AI Detection) */}
+                <div className="glass-panel p-8 rounded-3xl border-white/5 bg-gradient-to-br from-blue-900/10 to-black">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                        <Cpu className="w-5 h-5 mr-3 text-blue-400" />
+                        Technical Forensics
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Text Metrics */}
+                        {contentType === 'text' || contentType === 'url' ? (
+                            <>
+                                <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div className="text-xs text-slate-500 uppercase font-bold">Perplexity Score</div>
+                                        <div className="text-xs text-blue-400 font-mono">Linguistic Complexity</div>
+                                    </div>
+                                    <div className="flex items-end space-x-2">
+                                        <div className="text-3xl font-black text-white">{result.technicalMetrics?.perplexityScore || 0}</div>
+                                        <div className="text-xs text-slate-500 mb-1">/ 100</div>
+                                    </div>
+                                    <div className="w-full bg-slate-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${result.technicalMetrics?.perplexityScore && result.technicalMetrics.perplexityScore < 40 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${result.technicalMetrics?.perplexityScore || 0}%`}}></div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-2">
+                                        Low perplexity suggests predictable, machine-generated text. High perplexity indicates human nuance.
+                                    </p>
+                                </div>
+
+                                <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div className="text-xs text-slate-500 uppercase font-bold">Burstiness Score</div>
+                                        <div className="text-xs text-purple-400 font-mono">Sentence Variation</div>
+                                    </div>
+                                    <div className="flex items-end space-x-2">
+                                        <div className="text-3xl font-black text-white">{result.technicalMetrics?.burstinessScore || 0}</div>
+                                        <div className="text-xs text-slate-500 mb-1">/ 100</div>
+                                    </div>
+                                    <div className="w-full bg-slate-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${result.technicalMetrics?.burstinessScore && result.technicalMetrics.burstinessScore < 40 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${result.technicalMetrics?.burstinessScore || 0}%`}}></div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-2">
+                                        Low burstiness means uniform sentence structures (robotic). Humans write with high burstiness.
+                                    </p>
+                                </div>
+                            </>
+                        ) : (
+                            /* Image/Video Metrics */
+                            <>
+                                <div className="bg-black/40 p-4 rounded-xl border border-white/5">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <div className="text-xs text-slate-500 uppercase font-bold">Visual Artifacts</div>
+                                        <div className="text-xs text-red-400 font-mono">GAN/Diffusion Errors</div>
+                                    </div>
+                                    <div className="flex items-end space-x-2">
+                                        <div className="text-3xl font-black text-white">{result.technicalMetrics?.vitVisualArtifacts || 0}</div>
+                                        <div className="text-xs text-slate-500 mb-1">/ 100</div>
+                                    </div>
+                                    <div className="w-full bg-slate-800 h-1.5 mt-3 rounded-full overflow-hidden">
+                                        <div className={`h-full rounded-full ${result.technicalMetrics?.vitVisualArtifacts && result.technicalMetrics.vitVisualArtifacts > 50 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${result.technicalMetrics?.vitVisualArtifacts || 0}%`}}></div>
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-2">
+                                        High score indicates significant warping, asymmetry, or pixel inconsistencies typical of AI generation.
+                                    </p>
+                                </div>
+                                
+                                <div className="bg-black/40 p-4 rounded-xl border border-white/5 flex flex-col justify-center">
+                                    <div className="flex items-center space-x-3 mb-2">
+                                        <ScanFace className="w-5 h-5 text-purple-400" />
+                                        <span className="text-sm font-bold text-white">Deepfake Probability</span>
+                                    </div>
+                                    <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                                        {result.technicalMetrics?.aiProbability || 0}%
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+
                 {/* Multimodal Fusion (If applicable) */}
                 {result.multimodal && (
                     <div className="glass-panel p-8 rounded-3xl border-white/5 bg-gradient-to-br from-purple-900/10 to-black">
