@@ -467,12 +467,29 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                                         <span className="font-bold text-slate-500">EVIDENCE:</span> {check.evidence?.[0] || "Analysis pending..."}
                                     </div>
                                     {check.sources && check.sources.length > 0 && (
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {check.sources.map((src, i) => (
-                                                <span key={i} className="flex items-center text-[10px] text-primary-400 bg-primary-500/5 px-2 py-0.5 rounded border border-primary-500/10">
-                                                    <Globe className="w-3 h-3 mr-1" /> {src}
-                                                </span>
-                                            ))}
+                                        <div className="mt-3 pt-3 border-t border-white/5">
+                                            <div className="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center">
+                                                <Globe className="w-3 h-3 mr-1" /> Supporting Evidence & Sources
+                                            </div>
+                                            <div className="flex flex-wrap gap-2">
+                                                {check.sources.map((src, i) => {
+                                                    let hostname = src;
+                                                    try { hostname = new URL(src).hostname.replace('www.', ''); } catch(e) {}
+                                                    
+                                                    return (
+                                                        <a 
+                                                            key={i} 
+                                                            href={src} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="flex items-center text-[10px] text-primary-400 bg-primary-500/5 hover:bg-primary-500/10 px-2 py-1 rounded border border-primary-500/10 hover:border-primary-500/30 transition-all group"
+                                                        >
+                                                            <ArrowUpRight className="w-3 h-3 mr-1 opacity-50 group-hover:opacity-100" /> 
+                                                            <span className="truncate max-w-[150px]">{hostname}</span>
+                                                        </a>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
                                 </div>

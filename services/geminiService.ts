@@ -591,6 +591,7 @@ export const analyzeContent = async (
           2. Content Analysis: Check against verified ${domain} facts.
           3. AI Detection: Estimate if the content on this page is AI-generated.
           4. Knowledge Graph: Map key entities and claims.
+          5. Evidence Retrieval: Find external URLs that support or contradict the claims.
           Return result in JSON.
         `;
       } else {
@@ -603,6 +604,7 @@ export const analyzeContent = async (
           2. Fact-check claims against ${domain} consensus.
           3. Identify logical fallacies.
           4. Knowledge Graph: Extract entities (People, Orgs, Locations) and Claims. Link them based on relationships found in text.
+          5. Evidence Retrieval: Find external URLs that support or contradict the claims.
           Return result in JSON.
         `;
       }
@@ -612,6 +614,7 @@ export const analyzeContent = async (
         contents: promptText,
         config: {
           systemInstruction: systemInstruction,
+          tools: [{ googleSearch: {} }],
           responseMimeType: "application/json",
           responseSchema: schema
         }
@@ -619,6 +622,23 @@ export const analyzeContent = async (
 
       const textResponse = response.text || "{}";
       resultJson = JSON.parse(textResponse);
+      
+      // Extract grounding metadata if available and merge into factChecks if sources are missing
+      const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
+      if (groundingChunks && resultJson.factChecks) {
+          const webSources = groundingChunks
+            .filter((c: any) => c.web?.uri)
+            .map((c: any) => c.web.uri);
+            
+          // Distribute sources to fact checks if they don't have any
+          if (webSources.length > 0) {
+              resultJson.factChecks.forEach((check: any) => {
+                  if (!check.sources || check.sources.length === 0) {
+                      check.sources = webSources.slice(0, 2); // Assign first 2 sources as fallback
+                  }
+              });
+          }
+      }
     }
 
     return {
