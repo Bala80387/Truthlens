@@ -14,6 +14,7 @@ import { GeoAnalysis } from './components/GeoAnalysis';
 import { RealTimeNews } from './components/RealTimeNews';
 import { ChatAssistant } from './components/ChatAssistant';
 import { MailScanner } from './components/MailScanner';
+import { OnboardingTutorial } from './components/OnboardingTutorial';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
@@ -110,6 +111,9 @@ const App: React.FC = () => {
       
       {/* Global Chat Assistant */}
       <ChatAssistant />
+
+      {/* Onboarding Tutorial */}
+      <OnboardingTutorial />
     </div>
   );
 };

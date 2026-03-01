@@ -594,7 +594,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
               className={`
                 px-8 py-4 rounded-xl font-bold text-white shadow-[0_0_20px_rgba(0,0,0,0.3)] flex items-center space-x-3 transition-all duration-300
                 ${isAnalyzing 
-                  ? 'bg-slate-800 cursor-wait border border-white/5' 
+                  ? 'bg-slate-800 cursor-wait border border-white/5 animate-pulse' 
                   : isDeepAgentMode
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)] hover:scale-[1.02] border border-transparent'
                   : 'bg-gradient-to-r from-primary-600 to-purple-600 hover:shadow-[0_0_25px_rgba(14,165,233,0.4)] hover:scale-[1.02] border border-transparent'}
