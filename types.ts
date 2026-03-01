@@ -56,6 +56,7 @@ export interface ClaimVerification {
   confidence: number;
   evidence: string[];
   sources: string[];
+  flagReason?: string; // Detailed explanation of why it was flagged
 }
 
 export interface MultimodalFusion {

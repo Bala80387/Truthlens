@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp, ShieldCheck, Layers } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp, ShieldCheck, Layers, Info } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { translateText, generateTTS } from '../services/geminiService';
 import { KnowledgeGraph } from './KnowledgeGraph';
@@ -61,6 +61,17 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
   
   // UI State
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [expandedClaims, setExpandedClaims] = useState<Set<number>>(new Set());
+
+  const toggleClaim = (idx: number) => {
+      const newSet = new Set(expandedClaims);
+      if (newSet.has(idx)) {
+          newSet.delete(idx);
+      } else {
+          newSet.add(idx);
+      }
+      setExpandedClaims(newSet);
+  };
   
   // RLHF / Training State
   const [feedbackState, setFeedbackState] = useState<'idle' | 'correcting' | 'training' | 'trained'>('idle');
@@ -466,6 +477,37 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                                     <div className="text-xs text-slate-400 mb-2">
                                         <span className="font-bold text-slate-500">EVIDENCE:</span> {check.evidence?.[0] || "Analysis pending..."}
                                     </div>
+
+                                    {/* Why Flagged Toggle */}
+                                    <button 
+                                        onClick={() => toggleClaim(idx)}
+                                        className="text-[10px] font-bold text-primary-400 hover:text-primary-300 flex items-center mt-2 transition-colors focus:outline-none"
+                                    >
+                                        <Info className="w-3 h-3 mr-1" />
+                                        {expandedClaims.has(idx) ? "Hide Analysis" : "Why was this flagged?"}
+                                    </button>
+
+                                    {expandedClaims.has(idx) && (
+                                        <div className="mt-2 p-3 bg-white/5 rounded-lg border border-white/5 animate-fade-in">
+                                            <div className="flex items-start space-x-2 mb-2">
+                                                <Activity className="w-3 h-3 text-purple-400 mt-0.5" />
+                                                <div>
+                                                    <p className="text-[10px] font-bold text-slate-400 uppercase mb-0.5">Detection Logic</p>
+                                                    <p className="text-xs text-slate-200 leading-relaxed">
+                                                        {check.flagReason || "This claim matches patterns associated with misinformation in our knowledge base, specifically regarding logical consistency and source verification."}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center space-x-2 mt-2 pt-2 border-t border-white/5">
+                                                <span className="text-[10px] uppercase font-bold text-slate-500">Model Confidence</span>
+                                                <div className="flex-1 h-1 bg-slate-700 rounded-full overflow-hidden">
+                                                    <div className={`h-full rounded-full ${check.confidence > 80 ? 'bg-green-500' : check.confidence > 50 ? 'bg-yellow-500' : 'bg-red-500'}`} style={{width: `${check.confidence}%`}}></div>
+                                                </div>
+                                                <span className="text-[10px] font-mono text-white">{check.confidence}%</span>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {check.sources && check.sources.length > 0 && (
                                         <div className="mt-3 pt-3 border-t border-white/5">
                                             <div className="text-[10px] text-slate-500 uppercase font-bold mb-2 flex items-center">

@@ -436,7 +436,8 @@ export const analyzeContent = async (
             status: { type: Type.STRING, enum: ['Supported', 'Contradicted', 'Not Verified'] },
             confidence: { type: Type.INTEGER },
             evidence: { type: Type.ARRAY, items: { type: Type.STRING } },
-            sources: { type: Type.ARRAY, items: { type: Type.STRING } }
+            sources: { type: Type.ARRAY, items: { type: Type.STRING } },
+            flagReason: { type: Type.STRING, description: "Detailed explanation of WHY this claim was flagged (e.g., 'Logical Fallacy: Ad Hominem', 'Lack of Citation', 'Emotional Manipulation')." }
           }
         }
       },
