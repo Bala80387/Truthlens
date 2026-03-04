@@ -40,7 +40,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   const [result, setResult] = useState<AnalysisResult | null>(null);
   
   // Real-time Heuristics
-  const [metrics, setMetrics] = useState({ complexity: 0, urgency: 0, noise: 0, synthetic: 0 });
+  const [metrics, setMetrics] = useState({ perplexity: 0, burstiness: 0, synthetic: 0 });
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
@@ -59,35 +59,42 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
   // Heuristic Analysis Effect
   useEffect(() => {
     if (!inputText) {
-        setMetrics({ complexity: 0, urgency: 0, noise: 0, synthetic: 0 });
+        setMetrics({ perplexity: 0, burstiness: 0, synthetic: 0 });
         return;
     }
     const words = inputText.trim().split(/\s+/);
     if (words.length === 0) return;
 
-    const avgLen = words.reduce((acc, w) => acc + w.length, 0) / words.length;
-    const caps = words.filter(w => w.length > 1 && w === w.toUpperCase()).length;
-    const special = (inputText.match(/[^a-zA-Z0-9\s]/g) || []).length;
+    // 1. Perplexity Estimation (Vocabulary richness & predictability)
+    const uniqueWords = new Set(words.map(w => w.toLowerCase().replace(/[^a-z]/g, ''))).size;
+    const lexicalDiversity = uniqueWords / words.length;
+    // AI tends to use common words. Higher diversity = higher perplexity.
+    // Scale 0-100. A normal text is around 0.5-0.7 diversity.
+    const perplexityScore = Math.min(100, Math.max(10, Math.round(lexicalDiversity * 120)));
+
+    // 2. Burstiness Estimation (Sentence length variance)
+    const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const sentenceLengths = sentences.map(s => s.trim().split(/\s+/).length);
+    const avgSentLen = sentenceLengths.reduce((a, b) => a + b, 0) / (sentenceLengths.length || 1);
     
-    // Simple Synthetic/AI Heuristics
-    const aiPhrases = ["in summary", "it is important to note", "furthermore", "moreover", "in conclusion", "as an ai", "delve", "tapestry", "landscape"];
+    // Calculate variance
+    const variance = sentenceLengths.reduce((a, b) => a + Math.pow(b - avgSentLen, 2), 0) / (sentenceLengths.length || 1);
+    // AI tends to have low variance (e.g., all sentences are 15-20 words).
+    // Scale 0-100. Variance > 50 is very bursty.
+    const burstinessScore = Math.min(100, Math.max(10, Math.round(variance * 2)));
+    
+    // 3. Simple Synthetic/AI Heuristics
+    const aiPhrases = ["in summary", "it is important to note", "furthermore", "moreover", "in conclusion", "as an ai", "delve", "tapestry", "landscape", "crucial", "testament"];
     const aiPhraseCount = aiPhrases.reduce((acc, phrase) => acc + (inputText.toLowerCase().includes(phrase) ? 1 : 0), 0);
     
-    // Sentence length variance (AI tends to be more uniform)
-    const sentences = inputText.split(/[.!?]+/);
-    const sentenceLengths = sentences.map(s => s.trim().split(/\s+/).length).filter(l => l > 0);
-    const avgSentLen = sentenceLengths.reduce((a, b) => a + b, 0) / (sentenceLengths.length || 1);
-    const variance = sentenceLengths.reduce((a, b) => a + Math.pow(b - avgSentLen, 2), 0) / (sentenceLengths.length || 1);
-    
-    // Low variance + high AI phrase count = High Synthetic Score
-    let syntheticScore = (aiPhraseCount * 15);
-    if (sentenceLengths.length > 3 && variance < 10) syntheticScore += 30;
-    if (avgLen > 5 && avgLen < 7) syntheticScore += 10; // AI tends to have average word length around 5-6 chars
+    // Low perplexity + low burstiness + high AI phrase count = High Synthetic Score
+    let syntheticScore = (aiPhraseCount * 20);
+    if (perplexityScore < 40) syntheticScore += 25;
+    if (burstinessScore < 30) syntheticScore += 25;
 
     setMetrics({
-        complexity: Math.min(100, Math.max(10, avgLen * 12)), // Higher avg length = higher complexity
-        urgency: Math.min(100, (caps * 5) + (inputText.match(/!/g) || []).length * 10), // Caps and ! increase urgency
-        noise: Math.min(100, (special * 2) + (words.length < 5 ? 50 : 0)), // Special chars or very short text
+        perplexity: perplexityScore,
+        burstiness: burstinessScore,
         synthetic: Math.min(100, syntheticScore)
     });
   }, [inputText]);
@@ -393,21 +400,21 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                           <div className="flex items-center space-x-2">
                               <BarChart3 className="w-3 h-3 text-blue-400" />
                               <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
-                                  <div className="h-full bg-blue-400 transition-all duration-300" style={{width: `${metrics.complexity}%`}}></div>
+                                  <div className={`h-full transition-all duration-300 ${metrics.perplexity < 40 ? 'bg-red-500' : 'bg-blue-400'}`} style={{width: `${metrics.perplexity}%`}}></div>
                               </div>
-                              <span className="text-[9px] text-slate-400 font-mono">CMPLX</span>
+                              <span className="text-[9px] text-slate-400 font-mono">PERPLEXITY</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                              <Zap className="w-3 h-3 text-yellow-400" />
+                              <Activity className="w-3 h-3 text-purple-400" />
                               <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
-                                  <div className={`h-full transition-all duration-300 ${metrics.urgency > 50 ? 'bg-red-500' : 'bg-yellow-400'}`} style={{width: `${metrics.urgency}%`}}></div>
+                                  <div className={`h-full transition-all duration-300 ${metrics.burstiness < 40 ? 'bg-red-500' : 'bg-purple-400'}`} style={{width: `${metrics.burstiness}%`}}></div>
                               </div>
-                              <span className="text-[9px] text-slate-400 font-mono">URGENCY</span>
+                              <span className="text-[9px] text-slate-400 font-mono">BURSTINESS</span>
                           </div>
                           <div className="flex items-center space-x-2">
-                              <Cpu className="w-3 h-3 text-purple-400" />
+                              <Cpu className="w-3 h-3 text-red-400" />
                               <div className="w-16 h-1 bg-slate-700 rounded-full overflow-hidden">
-                                  <div className="h-full bg-purple-400 transition-all duration-300" style={{width: `${metrics.synthetic}%`}}></div>
+                                  <div className={`h-full transition-all duration-300 ${metrics.synthetic > 60 ? 'bg-red-500' : 'bg-green-500'}`} style={{width: `${metrics.synthetic}%`}}></div>
                               </div>
                               <span className="text-[9px] text-slate-400 font-mono">AI-LIKELIHOOD</span>
                           </div>

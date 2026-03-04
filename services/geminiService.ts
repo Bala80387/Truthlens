@@ -599,9 +599,10 @@ export const analyzeContent = async (
         promptText = `
           Analyze this ${platform} content: "${content}".
           Domain Focus: ${domain}.
-          1. AI DETECTION: Calculate Perplexity and Burstiness. 
-             - If sentences are uniform length and use common transition words ("Furthermore", "In conclusion"), flag as AI.
-             - If text has high variance and specific nuances, flag as Human.
+          1. AI DETECTION (Perplexity & Burstiness):
+             - Calculate 'Perplexity' (0-100): How predictable the word choices are. Low score (<40) means highly predictable, generic vocabulary (AI-like). High score means nuanced, unusual word choices (Human-like).
+             - Calculate 'Burstiness' (0-100): Variation in sentence length and structure. Low score (<40) means uniform sentence lengths and repetitive structures (AI-like). High score means a mix of short/long sentences and varied syntax (Human-like).
+             - If both are low, flag 'isAiGenerated' as true and set 'aiProbability' > 80.
           2. Fact-check claims against ${domain} consensus.
           3. Identify logical fallacies.
           4. Knowledge Graph: Extract entities (People, Orgs, Locations) and Claims. Link them based on relationships found in text.
