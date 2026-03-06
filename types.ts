@@ -82,6 +82,34 @@ export interface AnalysisResult {
   domain?: 'General' | 'Politics' | 'Health' | 'Finance';
   multimodal?: MultimodalFusion; // New field
   influentialWords?: string[]; // For Explainable AI
+  
+  // New MLaaS Features
+  consensus?: {
+    modelA: { name: string; verdict: Classification; confidence: number };
+    modelB: { name: string; verdict: Classification; confidence: number };
+    agreementScore: number; // 0-100
+    status: 'Consensus' | 'Contested' | 'Unanimous';
+  };
+  
+  visualGrounding?: {
+    isOriginal: boolean;
+    similarImages: Array<{ url: string; title: string; similarity: number }>;
+    context: string;
+    searchQueryUsed: string;
+  };
+
+  emotionalAnalysis?: {
+    primaryEmotion: string;
+    scores: {
+      fear: number;
+      anger: number;
+      joy: number;
+      sadness: number;
+      disgust: number;
+      surprise: number;
+    };
+    manipulationTactics: string[]; // e.g., "Fear Mongering", "Appeal to Authority"
+  };
 }
 
 export interface HistoryItem extends AnalysisResult {

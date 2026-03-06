@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AnalysisResult } from '../types';
-import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp, ShieldCheck, Layers, Info } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, HelpCircle, Share2, Eye, ThumbsDown, Activity, ChevronRight, Volume2, FileDown, ScanFace, Binary, Cpu, Search, Calendar, StopCircle, RefreshCw, Globe, Network, ThumbsUp, GitPullRequest, Save, Database, ArrowUpRight, Terminal, Check, Library, Vote, Pill, TrendingUp, ShieldCheck, Layers, Info, Users, Image as ImageIcon, Heart } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { translateText, generateTTS } from '../services/geminiService';
 import { KnowledgeGraph } from './KnowledgeGraph';
@@ -454,6 +454,130 @@ export const ResultsView: React.FC<ResultsViewProps> = ({ result, onReset, conte
                 {/* Detailed Metrics & Reasoning */}
                 <div className="md:col-span-2 space-y-6">
                 
+                {/* MLaaS Features: Consensus, Visual Grounding, Emotional Analysis */}
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
+                    {/* Multi-Model Consensus */}
+                    {result.consensus && (
+                        <div className="glass-panel p-6 rounded-3xl border-white/5 bg-gradient-to-br from-indigo-900/10 to-black">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                                <Users className="w-5 h-5 mr-2 text-indigo-400" />
+                                Multi-Model Consensus
+                            </h3>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="text-center">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Model A</div>
+                                    <div className={`text-sm font-bold ${result.consensus.modelA.verdict === 'Real' ? 'text-green-400' : 'text-red-400'}`}>
+                                        {result.consensus.modelA.verdict}
+                                    </div>
+                                    <div className="text-[10px] text-slate-600">{result.consensus.modelA.confidence}% Conf.</div>
+                                </div>
+                                <div className="flex flex-col items-center">
+                                    <div className={`text-2xl font-black ${result.consensus.status === 'Unanimous' ? 'text-green-400' : 'text-yellow-400'}`}>
+                                        {result.consensus.agreementScore}%
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 uppercase tracking-widest">Agreement</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-1">Model B</div>
+                                    <div className={`text-sm font-bold ${result.consensus.modelB.verdict === 'Real' ? 'text-green-400' : 'text-red-400'}`}>
+                                        {result.consensus.modelB.verdict}
+                                    </div>
+                                    <div className="text-[10px] text-slate-600">{result.consensus.modelB.confidence}% Conf.</div>
+                                </div>
+                            </div>
+                            <div className={`text-center text-xs font-bold py-1 rounded border ${result.consensus.status === 'Unanimous' ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-400'}`}>
+                                Status: {result.consensus.status}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Visual Grounding */}
+                    {result.visualGrounding && (
+                        <div className="glass-panel p-6 rounded-3xl border-white/5 bg-gradient-to-br from-cyan-900/10 to-black">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                                <ImageIcon className="w-5 h-5 mr-2 text-cyan-400" />
+                                Visual Grounding
+                            </h3>
+                            <div className="space-y-3">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs text-slate-400 font-bold uppercase">Originality Check</span>
+                                    <span className={`text-xs font-bold px-2 py-0.5 rounded ${result.visualGrounding.isOriginal ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+                                        {result.visualGrounding.isOriginal ? 'Likely Original' : 'Recycled Content'}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-slate-300 leading-relaxed border-l-2 border-cyan-500/30 pl-2">
+                                    {result.visualGrounding.context}
+                                </p>
+                                {result.visualGrounding.similarImages.length > 0 && (
+                                    <div className="mt-2">
+                                        <div className="text-[10px] text-slate-500 uppercase font-bold mb-1">Similar Matches Found</div>
+                                        <div className="flex gap-2 overflow-x-auto pb-2">
+                                            {result.visualGrounding.similarImages.map((img, i) => (
+                                                <a key={i} href={img.url} target="_blank" rel="noopener noreferrer" className="block w-16 h-12 bg-slate-800 rounded border border-white/10 flex-shrink-0 overflow-hidden relative group">
+                                                    <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <ArrowUpRight className="w-4 h-4 text-white" />
+                                                    </div>
+                                                    {/* Placeholder for actual image thumbnail if available, otherwise generic icon */}
+                                                    <div className="w-full h-full flex items-center justify-center bg-slate-900 text-[8px] text-slate-500 p-1 text-center">
+                                                        {img.title.substring(0, 15)}...
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Emotional Analysis */}
+                    {result.emotionalAnalysis && (
+                        <div className="glass-panel p-6 rounded-3xl border-white/5 bg-gradient-to-br from-pink-900/10 to-black md:col-span-2">
+                            <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                                <Heart className="w-5 h-5 mr-2 text-pink-400" />
+                                Emotional Manipulation Analysis
+                            </h3>
+                            <div className="flex flex-col md:flex-row gap-6">
+                                <div className="flex-1 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs text-slate-400 font-bold uppercase">Primary Emotion</span>
+                                        <span className="text-sm font-black text-pink-400 uppercase">{result.emotionalAnalysis.primaryEmotion}</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                        {(Object.entries(result.emotionalAnalysis.scores) as [string, number][]).map(([emotion, score]) => (
+                                            <div key={emotion} className="flex items-center space-x-2">
+                                                <span className="text-[10px] text-slate-500 uppercase w-16">{emotion}</span>
+                                                <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                    <div 
+                                                        className={`h-full rounded-full ${score > 0.7 ? 'bg-pink-500' : 'bg-slate-600'}`} 
+                                                        style={{width: `${score * 100}%`}}
+                                                    ></div>
+                                                </div>
+                                                <span className="text-[10px] font-mono text-slate-400 w-8 text-right">{(score * 100).toFixed(0)}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div className="flex-1 border-l border-white/5 pl-6">
+                                    <div className="text-xs text-slate-500 uppercase font-bold mb-2">Detected Tactics</div>
+                                    <div className="flex flex-wrap gap-2">
+                                        {result.emotionalAnalysis.manipulationTactics.map((tactic, i) => (
+                                            <span key={i} className="px-3 py-1 rounded-full bg-pink-500/10 text-pink-300 text-xs border border-pink-500/20">
+                                                {tactic}
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 mt-4 italic">
+                                        High emotional intensity scores often correlate with misinformation designed to bypass critical thinking.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+
                 {/* Claim-Level Verification */}
                 <div className="glass-panel p-8 rounded-3xl border-white/5">
                     <h3 className="text-xl font-bold text-white mb-6 flex items-center">

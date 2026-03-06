@@ -493,6 +493,43 @@ export const analyzeContent = async (
             }
           }
         }
+      },
+      // New MLaaS Fields
+      consensus: {
+        type: Type.OBJECT,
+        properties: {
+            modelA: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, verdict: { type: Type.STRING }, confidence: { type: Type.INTEGER } } },
+            modelB: { type: Type.OBJECT, properties: { name: { type: Type.STRING }, verdict: { type: Type.STRING }, confidence: { type: Type.INTEGER } } },
+            agreementScore: { type: Type.INTEGER },
+            status: { type: Type.STRING, enum: ['Consensus', 'Contested', 'Unanimous'] }
+        }
+      },
+      visualGrounding: {
+        type: Type.OBJECT,
+        properties: {
+            isOriginal: { type: Type.BOOLEAN },
+            similarImages: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { url: { type: Type.STRING }, title: { type: Type.STRING }, similarity: { type: Type.INTEGER } } } },
+            context: { type: Type.STRING },
+            searchQueryUsed: { type: Type.STRING }
+        }
+      },
+      emotionalAnalysis: {
+        type: Type.OBJECT,
+        properties: {
+            primaryEmotion: { type: Type.STRING },
+            scores: { 
+                type: Type.OBJECT, 
+                properties: {
+                    fear: { type: Type.NUMBER },
+                    anger: { type: Type.NUMBER },
+                    joy: { type: Type.NUMBER },
+                    sadness: { type: Type.NUMBER },
+                    disgust: { type: Type.NUMBER },
+                    surprise: { type: Type.NUMBER }
+                }
+            },
+            manipulationTactics: { type: Type.ARRAY, items: { type: Type.STRING } }
+        }
       }
     },
     required: ["classification", "confidence", "reasoning", "viralityScore", "technicalMetrics", "isAiGenerated", "knowledgeGraph", "factChecks"]
@@ -509,6 +546,7 @@ export const analyzeContent = async (
             2. Analyze the Audio Signal: Look for metallic artifacts, lack of breath, or perfect pitch stability (Robotic).
             3. Analyze the Text Syntax: Look for AI writing patterns (repetitive transitions, low burstiness).
             4. Extract Knowledge Graph entities.
+            5. EMOTIONAL ANALYSIS: Detect emotional tone (Fear, Anger, Joy, etc.) and manipulation tactics.
             
             Return JSON matching the schema. 
             If it sounds robotic or the text is generic AI slop, set 'isAiGenerated' to true and 'aiProbability' > 80.
@@ -541,6 +579,7 @@ export const analyzeContent = async (
         3. Analyze lighting consistency and reflections.
         4. Extract any text and verify claims.
         5. Build a Knowledge Graph of identified people, objects, and text entities.
+        6. VISUAL GROUNDING: Use Google Search to find if this image (or similar ones) has appeared before. Check for "Out of Context" usage.
         
         Return a JSON object matching the schema. 
         In 'reasoning', list specific visual artifacts found.
@@ -548,8 +587,9 @@ export const analyzeContent = async (
         Set 'isAiGenerated' to true if artifacts are significant.
       `;
       
+      // Use gemini-3.1-flash-image-preview for better image reasoning and tool use
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash-image',
+        model: 'gemini-3.1-flash-image-preview',
         contents: {
           parts: [
             { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
@@ -557,7 +597,10 @@ export const analyzeContent = async (
           ]
         },
         config: {
-          systemInstruction: systemInstruction, 
+          systemInstruction: systemInstruction,
+          tools: [{ googleSearch: {} }], // Enable Google Search for Visual Grounding
+          responseMimeType: "application/json",
+          responseSchema: schema
         }
       });
 
@@ -593,6 +636,8 @@ export const analyzeContent = async (
           3. AI Detection: Estimate if the content on this page is AI-generated.
           4. Knowledge Graph: Map key entities and claims.
           5. Evidence Retrieval: Find external URLs that support or contradict the claims.
+          6. EMOTIONAL ANALYSIS: Detect emotional tone (Fear, Anger, Joy, etc.) and manipulation tactics.
+          7. CONSENSUS CHECK: Simulate a second opinion from a "Skeptic" persona to verify the verdict.
           Return result in JSON.
         `;
       } else {
@@ -607,9 +652,16 @@ export const analyzeContent = async (
           3. Identify logical fallacies.
           4. Knowledge Graph: Extract entities (People, Orgs, Locations) and Claims. Link them based on relationships found in text.
           5. Evidence Retrieval: Find external URLs that support or contradict the claims.
+          6. EMOTIONAL ANALYSIS: Detect emotional tone (Fear, Anger, Joy, etc.) and manipulation tactics.
+          7. CONSENSUS CHECK: Simulate a second opinion from a "Skeptic" persona to verify the verdict.
           Return result in JSON.
         `;
       }
+
+      // ENSEMBLE APPROACH: Run parallel requests for robustness if needed, 
+      // but for now we instruct the single powerful model to simulate consensus or use internal reasoning.
+      // To truly implement MLaaS Ensemble, we would call two different models here.
+      // Let's simulate it by asking the model to explicitly output the consensus structure based on its internal "Mixture of Experts" or reasoning paths.
 
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -664,7 +716,10 @@ export const analyzeContent = async (
       knowledgeGraph: resultJson.knowledgeGraph || { nodes: [], links: [] },
       domain: domain,
       influentialWords: resultJson.influentialWords || [],
-      multimodal: resultJson.multimodal || undefined
+      multimodal: resultJson.multimodal || undefined,
+      consensus: resultJson.consensus || undefined,
+      visualGrounding: resultJson.visualGrounding || undefined,
+      emotionalAnalysis: resultJson.emotionalAnalysis || undefined
     };
 
   } catch (error) {

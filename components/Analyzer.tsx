@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText, Facebook, Twitter, Instagram, MessageCircle, Library, Pill, TrendingUp, Vote, ScanFace } from 'lucide-react';
+import { Upload, Type, Link as LinkIcon, Image as ImageIcon, Sparkles, AlertCircle, Globe, Search, Video, Mic, MicOff, Radio, Bot, Terminal, ShieldCheck, Zap, RefreshCw, BarChart3, Cpu, FileText, Facebook, Twitter, Instagram, MessageCircle, Library, Pill, TrendingUp, Vote, ScanFace, Activity } from 'lucide-react';
 import { analyzeContent, runAutonomousInvestigation } from '../services/geminiService';
 import { AnalysisResult } from '../types';
 import { ResultsView } from './ResultsView';
@@ -70,7 +70,8 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
     const lexicalDiversity = uniqueWords / words.length;
     // AI tends to use common words. Higher diversity = higher perplexity.
     // Scale 0-100. A normal text is around 0.5-0.7 diversity.
-    const perplexityScore = Math.min(100, Math.max(10, Math.round(lexicalDiversity * 120)));
+    // Fine-tuned: Increased multiplier to 140 to better differentiate human variance
+    const perplexityScore = Math.min(100, Math.max(10, Math.round(lexicalDiversity * 140)));
 
     // 2. Burstiness Estimation (Sentence length variance)
     const sentences = inputText.split(/[.!?]+/).filter(s => s.trim().length > 0);
@@ -81,16 +82,17 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
     const variance = sentenceLengths.reduce((a, b) => a + Math.pow(b - avgSentLen, 2), 0) / (sentenceLengths.length || 1);
     // AI tends to have low variance (e.g., all sentences are 15-20 words).
     // Scale 0-100. Variance > 50 is very bursty.
-    const burstinessScore = Math.min(100, Math.max(10, Math.round(variance * 2)));
+    // Fine-tuned: Increased multiplier to 2.5 for better sensitivity
+    const burstinessScore = Math.min(100, Math.max(10, Math.round(variance * 2.5)));
     
     // 3. Simple Synthetic/AI Heuristics
-    const aiPhrases = ["in summary", "it is important to note", "furthermore", "moreover", "in conclusion", "as an ai", "delve", "tapestry", "landscape", "crucial", "testament"];
+    const aiPhrases = ["in summary", "it is important to note", "furthermore", "moreover", "in conclusion", "as an ai", "delve", "tapestry", "landscape", "crucial", "testament", "realm", "foster"];
     const aiPhraseCount = aiPhrases.reduce((acc, phrase) => acc + (inputText.toLowerCase().includes(phrase) ? 1 : 0), 0);
     
     // Low perplexity + low burstiness + high AI phrase count = High Synthetic Score
-    let syntheticScore = (aiPhraseCount * 20);
-    if (perplexityScore < 40) syntheticScore += 25;
-    if (burstinessScore < 30) syntheticScore += 25;
+    let syntheticScore = (aiPhraseCount * 25); // Increased weight
+    if (perplexityScore < 45) syntheticScore += 30; // Stricter threshold
+    if (burstinessScore < 35) syntheticScore += 30; // Stricter threshold
 
     setMetrics({
         perplexity: perplexityScore,
@@ -605,7 +607,7 @@ export const Analyzer: React.FC<AnalyzerProps> = ({ initialText, onAnalysisCompl
                   : isDeepAgentMode
                   ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:shadow-[0_0_25px_rgba(168,85,247,0.4)] hover:scale-[1.02] border border-transparent'
                   : 'bg-gradient-to-r from-primary-600 to-purple-600 hover:shadow-[0_0_25px_rgba(14,165,233,0.4)] hover:scale-[1.02] border border-transparent'}
-                disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+                disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:animate-[pulse_3s_cubic-bezier(0.4,0,0.6,1)_infinite]
               `}
             >
               {isAnalyzing ? (
