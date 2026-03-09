@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { View, AnalysisResult, HistoryItem } from './types';
 import { Navigation } from './components/Navigation';
@@ -15,14 +15,80 @@ import { RealTimeNews } from './components/RealTimeNews';
 import { ChatAssistant } from './components/ChatAssistant';
 import { MailScanner } from './components/MailScanner';
 import { OnboardingTutorial } from './components/OnboardingTutorial';
+import { useAuth } from './components/AuthContext';
+import { db } from './firebase';
+import { collection, addDoc, query, where, onSnapshot, orderBy, deleteDoc, getDocs } from 'firebase/firestore';
+
+enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: any;
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null, user: any) {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: user?.uid,
+      email: user?.email,
+    },
+    operationType,
+    path
+  }
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+}
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>('analyzer');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [quickScanText, setQuickScanText] = useState<string>('');
+  const { user } = useAuth();
 
-  const handleAnalysisComplete = (result: AnalysisResult, content: string, type: 'text' | 'image' | 'url' | 'video' | 'audio') => {
+  useEffect(() => {
+    if (!user) {
+      setHistory([]);
+      return;
+    }
+
+    const q = query(
+      collection(db, 'history'),
+      where('userId', '==', user.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const historyData: HistoryItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        historyData.push({
+          id: doc.id,
+          ...JSON.parse(data.result),
+          preview: data.content.length > 60 ? data.content.substring(0, 60) + '...' : data.content,
+          type: data.type,
+          timestamp: data.createdAt?.toMillis() || Date.now()
+        });
+      });
+      // Sort client-side since we don't have a composite index yet
+      historyData.sort((a, b) => b.timestamp - a.timestamp);
+      setHistory(historyData);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, 'history', user);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  const handleAnalysisComplete = async (result: AnalysisResult, content: string, type: 'text' | 'image' | 'url' | 'video' | 'audio') => {
     const newItem: HistoryItem = {
       ...result,
       id: Math.random().toString(36).substr(2, 9),
@@ -30,7 +96,38 @@ const App: React.FC = () => {
       type,
       timestamp: Date.now()
     };
-    setHistory(prev => [newItem, ...prev]);
+    
+    if (user) {
+      try {
+        await addDoc(collection(db, 'history'), {
+          userId: user.uid,
+          type: type === 'video' || type === 'audio' ? 'url' : type, // map to allowed enum
+          content: type === 'image' ? 'Image Analysis' : content,
+          result: JSON.stringify(result),
+          createdAt: new Date()
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.CREATE, 'history', user);
+      }
+    } else {
+      setHistory(prev => [newItem, ...prev]);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (user) {
+      try {
+        const q = query(collection(db, 'history'), where('userId', '==', user.uid));
+        const snapshot = await getDocs(q);
+        snapshot.forEach(async (docSnapshot) => {
+          await deleteDoc(docSnapshot.ref);
+        });
+      } catch (error) {
+        handleFirestoreError(error, OperationType.DELETE, 'history', user);
+      }
+    } else {
+      setHistory([]);
+    }
   };
 
   const handleQuickScan = (text: string) => {
@@ -63,7 +160,7 @@ const App: React.FC = () => {
           onSelectHistory={(item) => {
              alert(`Viewing logs for ID: ${item.id}. Detailed history replay coming in v2.2`);
           }} 
-          onClearHistory={() => setHistory([])}
+          onClearHistory={handleClearHistory}
         />;
       case 'education':
         return <Education />;

@@ -1,0 +1,76 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique identifier for the user."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "The URL of the user's profile picture."
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "The time the user account was created."
+        }
+      },
+      "required": ["uid", "email", "createdAt"]
+    },
+    "History": {
+      "title": "History",
+      "description": "A record of an analysis performed by a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The ID of the user who performed the analysis."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["text", "image", "url"],
+          "description": "The type of content analyzed."
+        },
+        "content": {
+          "type": "string",
+          "description": "The content that was analyzed (text, URL, or image description)."
+        },
+        "result": {
+          "type": "object",
+          "description": "The JSON result of the analysis."
+        },
+        "createdAt": {
+          "type": "timestamp",
+          "description": "The time the analysis was performed."
+        }
+      },
+      "required": ["userId", "type", "content", "result", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": {
+        "$ref": "#/entities/User"
+      },
+      "description": "Stores user profiles."
+    },
+    "/history/{historyId}": {
+      "schema": {
+        "$ref": "#/entities/History"
+      },
+      "description": "Stores analysis history records."
+    }
+  }
+}
